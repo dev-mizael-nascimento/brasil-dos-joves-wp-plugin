@@ -121,6 +121,12 @@ class PJB_REST_API {
             'permission_callback' => array(__CLASS__, 'check_auth'),
         ));
 
+        register_rest_route(self::NAMESPACE, '/classes/(?P<id>[\w-]+)/public-enroll', array(
+            'methods' => 'POST',
+            'callback' => array(__CLASS__, 'public_enroll_class'),
+            'permission_callback' => '__return_true', // Matrícula pública por etapas
+        ));
+
         register_rest_route(self::NAMESPACE, '/classes/(?P<id>[\w-]+)/enroll/(?P<studentId>[\w-]+)', array(
             'methods' => 'DELETE',
             'callback' => array(__CLASS__, 'remove_student'),
@@ -715,6 +721,106 @@ class PJB_REST_API {
             return new WP_Error('not_found', 'Turma não encontrada.', array('status' => 404));
         }
         return rest_ensure_response(array('success' => true, 'message' => 'Aluno desmatriculado da turma.', 'data' => $updated));
+    }
+
+    public static function public_enroll_class($request) {
+        $class_id = $request->get_param('id');
+        $params = $request->get_json_params() ?: $request->get_params();
+
+        $cls = PJB_Database::get_class_by_id($class_id);
+        if (!$cls) {
+            return new WP_Error('not_found', 'Turma selecionada não encontrada.', array('status' => 404));
+        }
+        if ($cls['status'] === 'concluida') {
+            return new WP_Error('invalid_status', 'Esta turma já foi encerrada.', array('status' => 400));
+        }
+
+        $student_id = $params['studentId'] ?? '';
+        $cpf = preg_replace('/\D/', '', $params['cpf'] ?? '');
+        $target_student = null;
+
+        if (!empty($student_id)) {
+            $target_student = PJB_Database::get_beneficiary_by_id($student_id);
+        }
+
+        if (!$target_student && strlen($cpf) === 11) {
+            $by_cpf = PJB_Database::search_beneficiaries(array('cpf' => $cpf));
+            if (!empty($by_cpf)) {
+                $target_student = $by_cpf[0];
+            }
+        }
+
+        if (!$target_student) {
+            $name = sanitize_text_field($params['name'] ?? '');
+            $phone = sanitize_text_field($params['phone'] ?? '');
+            if (empty($name)) {
+                return new WP_Error('invalid_data', 'Nome completo é obrigatório.', array('status' => 400));
+            }
+            if (strlen($cpf) !== 11) {
+                return new WP_Error('invalid_data', 'CPF válido (11 dígitos) é obrigatório.', array('status' => 400));
+            }
+            if (empty($phone)) {
+                return new WP_Error('invalid_data', 'Telefone / WhatsApp é obrigatório.', array('status' => 400));
+            }
+
+            $birth_date = !empty($params['birthDate']) ? sanitize_text_field($params['birthDate']) : '2008-01-01';
+            $b_year = (int) substr($birth_date, 0, 4);
+            $age = $b_year > 1900 ? max(1, (int) date('Y') - $b_year) : 16;
+
+            $new_bene = array(
+                'name' => $name,
+                'cpf' => $cpf,
+                'phone' => $phone,
+                'email' => sanitize_email($params['email'] ?? ''),
+                'birthDate' => $birth_date,
+                'age' => $age,
+                'street' => sanitize_text_field($params['address'] ?? 'Não informado'),
+                'neighborhood' => sanitize_text_field($params['neighborhood'] ?? 'Centro'),
+                'city' => 'Castanhal',
+                'state' => 'PA',
+                'guardianName' => sanitize_text_field($params['guardianName'] ?? ''),
+                'guardianPhone' => sanitize_text_field($params['guardianPhone'] ?? ''),
+                'vulnerabilityLevel' => 'baixa',
+                'serviceInterest' => $cls['courseName'],
+            );
+            $target_student = PJB_Database::create_beneficiary($new_bene);
+        }
+
+        if (!$target_student) {
+            return new WP_Error('creation_failed', 'Falha ao processar cadastro do aluno.', array('status' => 500));
+        }
+
+        $enrolled_ids = $cls['enrolledStudentIds'] ?? array();
+        $is_already_enrolled = in_array($target_student['id'], $enrolled_ids);
+        $updated_class = $cls;
+
+        if (!$is_already_enrolled) {
+            if (count($enrolled_ids) >= (int) ($cls['maxStudents'] ?? 25)) {
+                return new WP_Error('no_vacancies', 'Desculpe, as vagas para esta turma acabaram de ser preenchidas.', array('status' => 400));
+            }
+            $updated_class = PJB_Database::enroll_student($cls['id'], array($target_student['id']));
+        }
+
+        $course = PJB_Database::get_course_by_id($cls['courseId']);
+        $protocol = 'MAT-' . date('Y') . '-' . ($cls['code'] ?: 'PJB') . '-' . strtoupper(substr(wp_generate_password(6, false), 0, 5));
+
+        $phone_clean = preg_replace('/\D/', '', $target_student['phone'] ?: ($params['phone'] ?? ''));
+        $whats_msg = "Olá, " . $target_student['name'] . "! 👋 Sua matrícula no curso *" . ($course['name'] ?? $cls['courseName']) . "* (Turma: " . $cls['code'] . ") foi confirmada com sucesso pelo Projeto Brasil dos Jovens.\n\n📋 *Protocolo:* " . $protocol . "\n⏰ *Horário:* " . $cls['schedule'] . "\n📍 *Local:* " . ($cls['room'] ?: 'Sede PJB Castanhal') . "\n📅 *Início:* " . $cls['startDate'] . "\n\nGuarde este comprovante e nos vemos na aula!";
+        $whatsapp_link = !empty($phone_clean) ? 'https://api.whatsapp.com/send?phone=55' . $phone_clean . '&text=' . urlencode($whats_msg) : null;
+
+        return rest_ensure_response(array(
+            'success' => true,
+            'message' => $is_already_enrolled ? 'Você já está matriculado nesta turma.' : 'Matrícula confirmada com sucesso!',
+            'protocol' => $protocol,
+            'data' => array(
+                'protocol' => $protocol,
+                'student' => $target_student,
+                'classGroup' => $updated_class ?: $cls,
+                'course' => $course ?: array('name' => $cls['courseName'], 'workloadHours' => 40, 'instructorName' => 'Instrutor PJB'),
+                'whatsappLink' => $whatsapp_link,
+                'alreadyEnrolled' => $is_already_enrolled,
+            ),
+        ));
     }
 
     public static function get_class_students($request) {

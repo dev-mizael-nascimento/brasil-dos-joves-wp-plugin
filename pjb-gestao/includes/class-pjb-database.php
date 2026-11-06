@@ -247,6 +247,7 @@ class PJB_Database {
             'activeVacancies' => (int) ($row['active_vacancies'] ?? 30),
             'status' => $row['status'] ?? 'aberto',
             'instructorName' => $row['instructor_name'] ?? 'Instrutor PJB',
+            'syllabus' => $row['syllabus'] ?? '',
         );
     }
 
@@ -282,6 +283,7 @@ class PJB_Database {
             'active_vacancies' => (int) ($data['activeVacancies'] ?? $total_vacancies),
             'status' => sanitize_text_field($data['status'] ?? 'aberto'),
             'instructor_name' => sanitize_text_field($data['instructorName'] ?? 'Instrutor PJB'),
+            'syllabus' => isset($data['syllabus']) ? sanitize_textarea_field($data['syllabus']) : null,
         );
 
         $inserted = $wpdb->insert($table, $record);
@@ -303,6 +305,7 @@ class PJB_Database {
         if (isset($data['activeVacancies'])) $fields['active_vacancies'] = (int) $data['activeVacancies'];
         if (isset($data['status'])) $fields['status'] = sanitize_text_field($data['status']);
         if (isset($data['instructorName'])) $fields['instructor_name'] = sanitize_text_field($data['instructorName']);
+        if (isset($data['syllabus'])) $fields['syllabus'] = sanitize_textarea_field($data['syllabus']);
 
         if (!empty($fields)) {
             $wpdb->update($table, $fields, array('id' => $id));
@@ -547,6 +550,7 @@ class PJB_Database {
             'verificationHash' => $row['verification_hash'],
             'qrCodeUrl' => $row['qr_code_url'],
             'issuedBy' => $row['issued_by'] ?? 'Coordenação Geral PJB',
+            'syllabus' => $row['syllabus'] ?? '',
         );
     }
 
@@ -634,6 +638,7 @@ class PJB_Database {
             'verification_hash' => $sig['hash'],
             'qr_code_url' => $qr_api,
             'issued_by' => sanitize_text_field($issued_by),
+            'syllabus' => !empty($course['syllabus']) ? $course['syllabus'] : null,
         );
 
         $wpdb->insert($table, $record);

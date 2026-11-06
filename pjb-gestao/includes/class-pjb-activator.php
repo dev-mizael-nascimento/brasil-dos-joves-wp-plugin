@@ -62,6 +62,7 @@ class PJB_Activator {
             active_vacancies int DEFAULT 30,
             status varchar(30) DEFAULT 'aberto',
             instructor_name varchar(255) DEFAULT 'Instrutor PJB',
+            syllabus text DEFAULT NULL,
             PRIMARY KEY (id)
         ) $charset_collate;";
         dbDelta($sql_courses);
@@ -113,6 +114,7 @@ class PJB_Activator {
             verification_hash varchar(64) NOT NULL,
             qr_code_url text DEFAULT NULL,
             issued_by varchar(255) DEFAULT 'Coordenação Geral PJB',
+            syllabus text DEFAULT NULL,
             PRIMARY KEY (id),
             UNIQUE KEY idx_code (code),
             KEY idx_student (student_id)
@@ -327,6 +329,16 @@ class PJB_Activator {
 
         // Popula dados semente se o banco estiver limpo
         self::seed_initial_data();
+
+        // Garante colunas de syllabus em bancos existentes
+        $col_course_syl = $wpdb->get_results("SHOW COLUMNS FROM `$table_courses` LIKE 'syllabus'");
+        if (empty($col_course_syl)) {
+            $wpdb->query("ALTER TABLE `$table_courses` ADD COLUMN `syllabus` text DEFAULT NULL");
+        }
+        $col_cert_syl = $wpdb->get_results("SHOW COLUMNS FROM `$table_certificates` LIKE 'syllabus'");
+        if (empty($col_cert_syl)) {
+            $wpdb->query("ALTER TABLE `$table_certificates` ADD COLUMN `syllabus` text DEFAULT NULL");
+        }
 
         update_option('pjb_db_version', PJB_DB_VERSION);
     }
