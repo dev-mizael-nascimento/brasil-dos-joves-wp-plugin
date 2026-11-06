@@ -6,10 +6,11 @@ if (!defined('ABSPATH')) {
 class PJB_Shortcodes {
     public static function init() {
         add_shortcode('pjb_inscricao', array(__CLASS__, 'render_enrollment_shortcode'));
+        add_shortcode('pjb_agendamento', array(__CLASS__, 'render_scheduling_shortcode'));
         add_shortcode('pjb_validar', array(__CLASS__, 'render_verify_shortcode'));
         add_shortcode('pjb_painel', array(__CLASS__, 'render_panel_shortcode'));
 
-        // Registra endpoints públicos amigáveis no WordPress (/validar e /inscrever)
+        // Registra endpoints públicos amigáveis no WordPress (/validar, /agendar e /inscrever)
         add_action('init', array(__CLASS__, 'register_public_rewrites'));
         add_filter('query_vars', array(__CLASS__, 'register_query_vars'));
         add_action('template_redirect', array(__CLASS__, 'handle_public_template_redirect'));
@@ -17,6 +18,7 @@ class PJB_Shortcodes {
 
     public static function register_public_rewrites() {
         add_rewrite_rule('^validar/?$', 'index.php?pjb_portal=validar', 'top');
+        add_rewrite_rule('^agendar/?$', 'index.php?pjb_portal=agendar', 'top');
         add_rewrite_rule('^inscrever/?$', 'index.php?pjb_portal=inscrever', 'top');
     }
 
@@ -36,6 +38,8 @@ class PJB_Shortcodes {
                 $uri = trim(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH), '/');
                 if ($uri === 'validar' || preg_match('#(^|/)validar/?$#', $uri)) {
                     $portal = 'validar';
+                } elseif ($uri === 'agendar' || preg_match('#(^|/)agendar/?$#', $uri)) {
+                    $portal = 'agendar';
                 } elseif ($uri === 'inscrever' || preg_match('#(^|/)inscrever/?$#', $uri)) {
                     $portal = 'inscrever';
                 }
@@ -45,6 +49,12 @@ class PJB_Shortcodes {
         if ($portal === 'validar') {
             status_header(200);
             self::render_standalone_portal('verify-cert', 'Consulta e Validação Oficial de Certificados — Projeto Brasil dos Jovens');
+            exit;
+        }
+
+        if ($portal === 'agendar') {
+            status_header(200);
+            self::render_standalone_portal('public-scheduling', 'Agendamento de Atendimentos Gratuitos — Projeto Brasil dos Jovens');
             exit;
         }
 
@@ -123,6 +133,11 @@ class PJB_Shortcodes {
 
     public static function render_enrollment_shortcode() {
         self::enqueue_frontend_assets('public-enrollment', true);
+        return '<div class="pjb-shortcode-wrapper"><div id="root"></div></div>';
+    }
+
+    public static function render_scheduling_shortcode() {
+        self::enqueue_frontend_assets('public-scheduling', true);
         return '<div class="pjb-shortcode-wrapper"><div id="root"></div></div>';
     }
 

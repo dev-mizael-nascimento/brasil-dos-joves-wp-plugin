@@ -37,6 +37,12 @@ class PJB_REST_API {
             ),
         ));
 
+        register_rest_route(self::NAMESPACE, '/beneficiaries/lookup-by-cpf/(?P<cpf>[\w.-]+)', array(
+            'methods' => 'GET',
+            'callback' => array(__CLASS__, 'lookup_beneficiary_by_cpf'),
+            'permission_callback' => '__return_true', // Busca rápida de beneficiário por CPF para agendamento
+        ));
+
         register_rest_route(self::NAMESPACE, '/beneficiaries/(?P<id>[\w-]+)', array(
             array(
                 'methods' => 'GET',
@@ -409,6 +415,18 @@ class PJB_REST_API {
                 'callback' => array(__CLASS__, 'create_service_attendance'),
                 'permission_callback' => array(__CLASS__, 'check_auth'),
             ),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/attendances/available-slots', array(
+            'methods' => 'GET',
+            'callback' => array(__CLASS__, 'get_available_slots'),
+            'permission_callback' => '__return_true',
+        ));
+
+        register_rest_route(self::NAMESPACE, '/attendances/public-schedule', array(
+            'methods' => 'POST',
+            'callback' => array(__CLASS__, 'create_public_schedule'),
+            'permission_callback' => '__return_true',
         ));
 
         register_rest_route(self::NAMESPACE, '/attendances/(?P<id>[a-zA-Z0-9_\-]+)', array(
@@ -1368,6 +1386,166 @@ class PJB_REST_API {
         $id = $request->get_param('id');
         $deleted = PJB_Database::delete_financial_transaction($id);
         return rest_ensure_response(array('success' => $deleted));
+    }
+
+    // ========================================================
+    // MÓDULO DE AGENDAMENTO PÚBLICO E CONSULTA DE BENEFICIÁRIO
+    // ========================================================
+    public static function lookup_beneficiary_by_cpf($request) {
+        $raw_cpf = $request->get_param('cpf');
+        $clean_cpf = preg_replace('/\D/', '', $raw_cpf);
+        if (strlen($clean_cpf) < 11) {
+            return new WP_Error('invalid_cpf', 'Por favor, informe um CPF válido com 11 dígitos.', array('status' => 400));
+        }
+
+        $beneficiary = PJB_Database::get_beneficiary_by_cpf($clean_cpf);
+        if (!$beneficiary) {
+            return rest_ensure_response(array(
+                'success' => true,
+                'found'   => false,
+                'message' => 'Beneficiário não localizado para este CPF.',
+            ));
+        }
+
+        return rest_ensure_response(array(
+            'success' => true,
+            'found'   => true,
+            'data'    => array(
+                'id'           => $beneficiary['id'],
+                'name'         => $beneficiary['name'],
+                'cpf'          => $beneficiary['cpf'],
+                'birthDate'    => $beneficiary['birthDate'] ?? '',
+                'phone'        => $beneficiary['phone'] ?? '',
+                'email'        => $beneficiary['email'] ?? '',
+                'neighborhood' => $beneficiary['neighborhood'] ?? '',
+                'address'      => $beneficiary['address'] ?? '',
+                'city'         => $beneficiary['city'] ?? '',
+            ),
+        ));
+    }
+
+    public static function get_available_slots($request) {
+        $professional_id = $request->get_param('professionalId');
+        $date = sanitize_text_field($request->get_param('date'));
+        if (empty($date)) {
+            return new WP_Error('missing_date', 'A data do agendamento é obrigatória.', array('status' => 400));
+        }
+
+        $all_slots = array('08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00');
+        $prof = null;
+        if (!empty($professional_id)) {
+            $prof = PJB_Database::get_attendance_professional_by_id($professional_id);
+            if (!empty($prof['availableHours']) && is_array($prof['availableHours'])) {
+                $all_slots = $prof['availableHours'];
+            }
+        }
+
+        $existing = PJB_Database::get_attendances(array(
+            'professionalId' => $professional_id,
+        ));
+
+        $booked_slots = array();
+        foreach ($existing as $atd) {
+            if ($atd['date'] === $date && $atd['status'] !== 'cancelado' && !empty($atd['time'])) {
+                $booked_slots[] = $atd['time'];
+            }
+        }
+
+        $available = array_values(array_diff($all_slots, $booked_slots));
+
+        return rest_ensure_response(array(
+            'success'        => true,
+            'date'           => $date,
+            'professional'   => $prof ? array('id' => $prof['id'], 'name' => $prof['name'], 'specialty' => $prof['specialty']) : null,
+            'allSlots'       => $all_slots,
+            'bookedSlots'    => $booked_slots,
+            'availableSlots' => $available,
+        ));
+    }
+
+    public static function create_public_schedule($request) {
+        $params = $request->get_json_params() ?: $request->get_params();
+
+        $specialty = sanitize_text_field($params['specialty'] ?? '');
+        $date = sanitize_text_field($params['date'] ?? '');
+        $time = sanitize_text_field($params['time'] ?? '');
+        $area = sanitize_text_field($params['area'] ?? 'saude');
+        $prof_id = !empty($params['professionalId']) ? sanitize_text_field($params['professionalId']) : null;
+        $complaint = sanitize_textarea_field($params['chiefComplaint'] ?? 'Agendamento solicitado pelo portal público do PJB');
+        $beneficiary_input = $params['beneficiary'] ?? array();
+
+        if (empty($specialty) || empty($date) || empty($time)) {
+            return new WP_Error('missing_fields', 'Especialidade, data e horário são obrigatórios.', array('status' => 400));
+        }
+
+        $raw_cpf = $beneficiary_input['cpf'] ?? '';
+        $clean_cpf = preg_replace('/\D/', '', $raw_cpf);
+        if (strlen($clean_cpf) < 11) {
+            return new WP_Error('invalid_cpf', 'CPF válido com 11 dígitos é obrigatório.', array('status' => 400));
+        }
+
+        $name = sanitize_text_field($beneficiary_input['name'] ?? '');
+        if (empty($name)) {
+            return new WP_Error('missing_name', 'Nome completo é obrigatório.', array('status' => 400));
+        }
+
+        // Localiza ou cadastra o beneficiário
+        $target_ben = PJB_Database::get_beneficiary_by_cpf($clean_cpf);
+        if (!$target_ben) {
+            $created_ben = PJB_Database::create_beneficiary(array(
+                'name'         => $name,
+                'cpf'          => $clean_cpf,
+                'birthDate'    => sanitize_text_field($beneficiary_input['birthDate'] ?? date('Y-m-d')),
+                'phone'        => sanitize_text_field($beneficiary_input['phone'] ?? ''),
+                'email'        => sanitize_email($beneficiary_input['email'] ?? ''),
+                'neighborhood' => sanitize_text_field($beneficiary_input['neighborhood'] ?? 'Castanhal'),
+                'address'      => sanitize_text_field($beneficiary_input['address'] ?? ''),
+                'vulnerability'=> 'baixa',
+                'status'       => 'ativo',
+                'notes'        => 'Cadastrado automaticamente via Portal de Agendamento Público.',
+            ));
+            $target_ben = $created_ben;
+        }
+
+        $prof_name = 'Equipe de Acolhimento PJB';
+        $prof_reg = null;
+        if ($prof_id) {
+            $prof = PJB_Database::get_attendance_professional_by_id($prof_id);
+            if ($prof) {
+                $prof_name = $prof['name'];
+                $prof_reg = $prof['registrationNumber'] ?? null;
+            }
+        }
+
+        $created_attendance = PJB_Database::create_attendance(array(
+            'area'                     => $area,
+            'specialty'                => $specialty,
+            'beneficiaryId'            => $target_ben['id'] ?? null,
+            'beneficiaryName'          => $target_ben['name'] ?? $name,
+            'beneficiaryCpf'           => $clean_cpf,
+            'beneficiaryPhone'         => sanitize_text_field($beneficiary_input['phone'] ?? ($target_ben['phone'] ?? '')),
+            'beneficiaryBirthDate'     => $target_ben['birthDate'] ?? null,
+            'professionalId'           => $prof_id,
+            'professionalName'         => $prof_name,
+            'professionalRegistration' => $prof_reg,
+            'date'                     => $date,
+            'time'                     => $time,
+            'location'                 => 'Sede PJB - Projeto Brasil dos Jovens (Castanhal - PA)',
+            'status'                   => 'agendado',
+            'priority'                 => 'normal',
+            'chiefComplaint'           => $complaint,
+        ));
+
+        if (!$created_attendance) {
+            return new WP_Error('create_failed', 'Erro ao registrar agendamento no banco de dados.', array('status' => 500));
+        }
+
+        return rest_ensure_response(array(
+            'success'        => true,
+            'message'        => 'Agendamento confirmado com sucesso!',
+            'data'           => $created_attendance,
+            'protocolNumber' => $created_attendance['protocolNumber'] ?? '',
+        ));
     }
 }
 
