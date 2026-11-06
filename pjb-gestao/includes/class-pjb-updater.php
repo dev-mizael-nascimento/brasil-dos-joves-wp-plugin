@@ -12,8 +12,8 @@ if (!defined('ABSPATH')) {
 class PJB_Updater {
 
     private static $repo_owner = 'viebmiza';
-    private static $repo_name  = 'PJB-brasil-dos-joves-';
-    private static $manifest_url = 'https://raw.githubusercontent.com/viebmiza/PJB-brasil-dos-joves-/main/wordpress-plugin/update-info.json';
+    private static $repo_name  = 'brasil-dos-joves-wp-plugin';
+    private static $manifest_url = 'https://raw.githubusercontent.com/viebmiza/brasil-dos-joves-wp-plugin/main/update-info.json';
 
     public static function init() {
         // Filtro nativo de checagem de atualizações de plugins do WordPress

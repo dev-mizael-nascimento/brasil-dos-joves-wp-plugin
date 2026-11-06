@@ -2,15 +2,15 @@
   "name": "Projeto Brasil dos Jovens (PJB) - Gestão Social & Acadêmica",
   "slug": "pjb-gestao",
   "version": "1.0.1",
-  "last_commit": "775f2df",
-  "last_commit_message": "build: atualizar manifesto update-info e zip com commit 9fcdc4e",
-  "last_updated": "2026-11-06 09:37:40",
-  "download_url": "https://raw.githubusercontent.com/viebmiza/PJB-brasil-dos-joves-/main/wordpress-plugin/pjb-gestao.zip",
+  "last_commit": "0575ac7",
+  "last_commit_message": "feat(saas): modulo de saude, juridico, financeiro, emissao e consulta de 2a via por cpf e desvinculacao do plugin wordpress",
+  "last_updated": "2026-11-06 09:44:14",
+  "download_url": "https://raw.githubusercontent.com/viebmiza/brasil-dos-joves-wp-plugin/main/pjb-gestao.zip",
   "tested": "6.7",
   "requires": "6.0",
   "requires_php": "7.4",
   "sections": {
     "description": "Sistema completo de gestão social, qualificação profissional, controle de turmas, frequência, emissão de certificados oficiais com QR Code e captação de recursos com IA para o Projeto Brasil dos Jovens (PJB).",
-    "changelog": "Último commit: [775f2df] build: atualizar manifesto update-info e zip com commit 9fcdc4e"
+    "changelog": "Último commit: [0575ac7] feat(saas): modulo de saude, juridico, financeiro, emissao e consulta de 2a via por cpf e desvinculacao do plugin wordpress"
   }
 }

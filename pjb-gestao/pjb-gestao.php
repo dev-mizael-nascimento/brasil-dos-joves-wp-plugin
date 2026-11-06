@@ -44,6 +44,11 @@ register_deactivation_hook(__FILE__, array('PJB_Deactivator', 'deactivate'));
 
 // Inicialização dos serviços
 add_action('plugins_loaded', function () {
+    // Migração automática de banco de dados se a versão mudou
+    if (get_option('pjb_db_version') !== PJB_DB_VERSION) {
+        PJB_Activator::activate();
+    }
+
     PJB_Roles::init();
     PJB_Admin::init();
     PJB_Shortcodes::init();
