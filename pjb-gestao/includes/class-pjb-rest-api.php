@@ -1,0 +1,1373 @@
+<?php
+if (!defined('ABSPATH')) {
+    exit;
+}
+
+class PJB_REST_API {
+    const NAMESPACE = 'pjb/v1';
+
+    public static function init() {
+        add_action('rest_api_init', array(__CLASS__, 'register_routes'));
+    }
+
+    public static function check_auth() {
+        // No contexto do painel do WordPress, basta estar autenticado
+        return is_user_logged_in();
+    }
+
+    public static function register_routes() {
+        // Estatísticas do Painel
+        register_rest_route(self::NAMESPACE, '/stats', array(
+            'methods' => 'GET',
+            'callback' => array(__CLASS__, 'get_stats'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        // Beneficiários
+        register_rest_route(self::NAMESPACE, '/beneficiaries', array(
+            array(
+                'methods' => 'GET',
+                'callback' => array(__CLASS__, 'get_beneficiaries'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+            array(
+                'methods' => 'POST',
+                'callback' => array(__CLASS__, 'create_beneficiary'),
+                'permission_callback' => '__return_true', // Permitido no portal público
+            ),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/beneficiaries/(?P<id>[\w-]+)', array(
+            array(
+                'methods' => 'GET',
+                'callback' => array(__CLASS__, 'get_beneficiary_details'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+            array(
+                'methods' => 'PUT',
+                'callback' => array(__CLASS__, 'update_beneficiary'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+            array(
+                'methods' => 'DELETE',
+                'callback' => array(__CLASS__, 'delete_beneficiary'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+        ));
+
+        // Cursos
+        register_rest_route(self::NAMESPACE, '/courses', array(
+            array(
+                'methods' => 'GET',
+                'callback' => array(__CLASS__, 'get_courses'),
+                'permission_callback' => '__return_true', // Público para o portal de inscrição
+            ),
+            array(
+                'methods' => 'POST',
+                'callback' => array(__CLASS__, 'create_course'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/courses/(?P<id>[\w-]+)', array(
+            array(
+                'methods' => 'PUT',
+                'callback' => array(__CLASS__, 'update_course'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+            array(
+                'methods' => 'DELETE',
+                'callback' => array(__CLASS__, 'delete_course'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+        ));
+
+        // Turmas
+        register_rest_route(self::NAMESPACE, '/classes', array(
+            array(
+                'methods' => 'GET',
+                'callback' => array(__CLASS__, 'get_classes'),
+                'permission_callback' => '__return_true', // Público para o portal de inscrição
+            ),
+            array(
+                'methods' => 'POST',
+                'callback' => array(__CLASS__, 'create_class'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/classes/(?P<id>[\w-]+)', array(
+            array(
+                'methods' => 'PUT',
+                'callback' => array(__CLASS__, 'update_class'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+            array(
+                'methods' => 'DELETE',
+                'callback' => array(__CLASS__, 'delete_class'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/classes/(?P<id>[\w-]+)/enroll', array(
+            'methods' => 'POST',
+            'callback' => array(__CLASS__, 'enroll_student'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/classes/(?P<id>[\w-]+)/enroll/(?P<studentId>[\w-]+)', array(
+            'methods' => 'DELETE',
+            'callback' => array(__CLASS__, 'remove_student'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/classes/(?P<id>[\w-]+)/students', array(
+            'methods' => 'GET',
+            'callback' => array(__CLASS__, 'get_class_students'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        // Frequência
+        register_rest_route(self::NAMESPACE, '/attendance/(?P<classId>[\w-]+)', array(
+            'methods' => 'GET',
+            'callback' => array(__CLASS__, 'get_attendance'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/attendance', array(
+            'methods' => 'POST',
+            'callback' => array(__CLASS__, 'record_attendance'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/attendance/absence-alerts', array(
+            'methods' => 'GET',
+            'callback' => array(__CLASS__, 'get_absence_alerts'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        // Certificados
+        register_rest_route(self::NAMESPACE, '/certificates', array(
+            'methods' => 'GET',
+            'callback' => array(__CLASS__, 'get_certificates'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/certificates/issue', array(
+            'methods' => 'POST',
+            'callback' => array(__CLASS__, 'issue_certificate'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/certificates/verify/(?P<code>[\w-]+)', array(
+            'methods' => 'GET',
+            'callback' => array(__CLASS__, 'verify_certificate'),
+            'permission_callback' => '__return_true', // Validação pública por QR Code
+        ));
+
+        register_rest_route(self::NAMESPACE, '/certificates/lookup-by-cpf/(?P<cpf>[\w.-]+)', array(
+            'methods' => 'GET',
+            'callback' => array(__CLASS__, 'lookup_certificates_by_cpf'),
+            'permission_callback' => '__return_true', // Consulta pública de 2ª via por CPF
+        ));
+
+        // Doações & Campanhas
+        register_rest_route(self::NAMESPACE, '/campaigns', array(
+            array(
+                'methods' => 'GET',
+                'callback' => array(__CLASS__, 'get_campaigns'),
+                'permission_callback' => '__return_true',
+            ),
+            array(
+                'methods' => 'POST',
+                'callback' => array(__CLASS__, 'create_campaign'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/campaigns/(?P<id>[a-zA-Z0-9_\-]+)', array(
+            array(
+                'methods' => 'GET',
+                'callback' => array(__CLASS__, 'get_campaign'),
+                'permission_callback' => '__return_true',
+            ),
+            array(
+                'methods' => 'PUT',
+                'callback' => array(__CLASS__, 'update_campaign'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+            array(
+                'methods' => 'DELETE',
+                'callback' => array(__CLASS__, 'delete_campaign'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/campaigns/(?P<id>[a-zA-Z0-9_\-]+)/status', array(
+            'methods' => 'PATCH',
+            'callback' => array(__CLASS__, 'update_campaign_status'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/donations', array(
+            array(
+                'methods' => 'GET',
+                'callback' => array(__CLASS__, 'get_donations'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+            array(
+                'methods' => 'POST',
+                'callback' => array(__CLASS__, 'create_donation'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/donations/(?P<id>[\w-]+)', array(
+            'methods' => 'DELETE',
+            'callback' => array(__CLASS__, 'delete_donation'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        // Notificações
+        register_rest_route(self::NAMESPACE, '/notifications', array(
+            'methods' => 'GET',
+            'callback' => array(__CLASS__, 'get_notifications'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/notifications/send', array(
+            'methods' => 'POST',
+            'callback' => array(__CLASS__, 'send_notification'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/notifications/whatsapp-link', array(
+            'methods' => 'POST',
+            'callback' => array(__CLASS__, 'get_whatsapp_link'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/notifications/email-send', array(
+            'methods' => 'POST',
+            'callback' => array(__CLASS__, 'send_email_notification'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        // Inteligência Artificial (Gemini)
+        register_rest_route(self::NAMESPACE, '/ai/social-assessment', array(
+            'methods' => 'POST',
+            'callback' => array(__CLASS__, 'ai_social_assessment'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/ai/grant-report', array(
+            'methods' => 'POST',
+            'callback' => array(__CLASS__, 'ai_grant_report'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/ai/grant-proposal', array(
+            'methods' => 'POST',
+            'callback' => array(__CLASS__, 'ai_grant_proposal'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        // Backup & Migração do Banco de Dados
+        register_rest_route(self::NAMESPACE, '/backup/export', array(
+            'methods' => 'GET',
+            'callback' => array(__CLASS__, 'export_backup'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/backup/import', array(
+            'methods' => 'POST',
+            'callback' => array(__CLASS__, 'import_backup'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/backup/summary', array(
+            'methods' => 'GET',
+            'callback' => array(__CLASS__, 'get_backup_summary'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        // Esporte, Cultura, Música, Jogos & Ações Comunitárias
+        register_rest_route(self::NAMESPACE, '/activities', array(
+            array(
+                'methods' => 'GET',
+                'callback' => array(__CLASS__, 'get_activities'),
+                'permission_callback' => '__return_true',
+            ),
+            array(
+                'methods' => 'POST',
+                'callback' => array(__CLASS__, 'create_activity'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/activities/(?P<id>[a-zA-Z0-9_\-]+)', array(
+            array(
+                'methods' => 'GET',
+                'callback' => array(__CLASS__, 'get_activity'),
+                'permission_callback' => '__return_true',
+            ),
+            array(
+                'methods' => 'PUT',
+                'callback' => array(__CLASS__, 'update_activity'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+            array(
+                'methods' => 'DELETE',
+                'callback' => array(__CLASS__, 'delete_activity'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/activities/(?P<id>[a-zA-Z0-9_\-]+)/status', array(
+            'methods' => 'PATCH',
+            'callback' => array(__CLASS__, 'update_activity_status'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/activities/(?P<id>[a-zA-Z0-9_\-]+)/participants', array(
+            'methods' => 'POST',
+            'callback' => array(__CLASS__, 'add_activity_participant'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/activities/(?P<id>[a-zA-Z0-9_\-]+)/participants/(?P<participantId>[a-zA-Z0-9_\-]+)', array(
+            array(
+                'methods' => 'PUT',
+                'callback' => array(__CLASS__, 'update_activity_participant'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+            array(
+                'methods' => 'DELETE',
+                'callback' => array(__CLASS__, 'delete_activity_participant'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/activities/(?P<id>[a-zA-Z0-9_\-]+)/supporters', array(
+            'methods' => 'POST',
+            'callback' => array(__CLASS__, 'add_activity_supporter'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/activities/(?P<id>[a-zA-Z0-9_\-]+)/supporters/(?P<supporterId>[a-zA-Z0-9_\-]+)', array(
+            'methods' => 'DELETE',
+            'callback' => array(__CLASS__, 'delete_activity_supporter'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        // Saúde & Jurídico - Atendimentos e Profissionais Voluntários
+        register_rest_route(self::NAMESPACE, '/attendances/stats', array(
+            'methods' => 'GET',
+            'callback' => array(__CLASS__, 'get_attendance_stats'),
+            'permission_callback' => '__return_true',
+        ));
+
+        register_rest_route(self::NAMESPACE, '/attendances/professionals', array(
+            array(
+                'methods' => 'GET',
+                'callback' => array(__CLASS__, 'get_attendance_professionals'),
+                'permission_callback' => '__return_true',
+            ),
+            array(
+                'methods' => 'POST',
+                'callback' => array(__CLASS__, 'create_attendance_professional'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/attendances/professionals/(?P<id>[a-zA-Z0-9_\-]+)', array(
+            array(
+                'methods' => 'GET',
+                'callback' => array(__CLASS__, 'get_attendance_professional'),
+                'permission_callback' => '__return_true',
+            ),
+            array(
+                'methods' => 'PUT',
+                'callback' => array(__CLASS__, 'update_attendance_professional'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+            array(
+                'methods' => 'DELETE',
+                'callback' => array(__CLASS__, 'delete_attendance_professional'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/attendances', array(
+            array(
+                'methods' => 'GET',
+                'callback' => array(__CLASS__, 'get_service_attendances'),
+                'permission_callback' => '__return_true',
+            ),
+            array(
+                'methods' => 'POST',
+                'callback' => array(__CLASS__, 'create_service_attendance'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/attendances/(?P<id>[a-zA-Z0-9_\-]+)', array(
+            array(
+                'methods' => 'GET',
+                'callback' => array(__CLASS__, 'get_service_attendance'),
+                'permission_callback' => '__return_true',
+            ),
+            array(
+                'methods' => 'PUT',
+                'callback' => array(__CLASS__, 'update_service_attendance'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+            array(
+                'methods' => 'DELETE',
+                'callback' => array(__CLASS__, 'delete_service_attendance'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/attendances/(?P<id>[a-zA-Z0-9_\-]+)/status', array(
+            'methods' => 'PATCH',
+            'callback' => array(__CLASS__, 'update_service_attendance_status'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+
+        // Gestão Financeira, Doações Monetárias & Prestação de Contas
+        register_rest_route(self::NAMESPACE, '/financial/stats', array(
+            'methods' => 'GET',
+            'callback' => array(__CLASS__, 'get_financial_stats'),
+            'permission_callback' => '__return_true',
+        ));
+
+        register_rest_route(self::NAMESPACE, '/financial/transactions', array(
+            array(
+                'methods' => 'GET',
+                'callback' => array(__CLASS__, 'get_financial_transactions'),
+                'permission_callback' => '__return_true',
+            ),
+            array(
+                'methods' => 'POST',
+                'callback' => array(__CLASS__, 'create_financial_transaction'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/financial/transactions/(?P<id>[a-zA-Z0-9_\-]+)', array(
+            array(
+                'methods' => 'GET',
+                'callback' => array(__CLASS__, 'get_financial_transaction'),
+                'permission_callback' => '__return_true',
+            ),
+            array(
+                'methods' => 'PUT',
+                'callback' => array(__CLASS__, 'update_financial_transaction'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+            array(
+                'methods' => 'DELETE',
+                'callback' => array(__CLASS__, 'delete_financial_transaction'),
+                'permission_callback' => array(__CLASS__, 'check_auth'),
+            ),
+        ));
+
+        register_rest_route(self::NAMESPACE, '/financial/transactions/(?P<id>[a-zA-Z0-9_\-]+)/status', array(
+            'methods' => 'PATCH',
+            'callback' => array(__CLASS__, 'update_financial_transaction_status'),
+            'permission_callback' => array(__CLASS__, 'check_auth'),
+        ));
+    }
+
+    // ========================================================
+    // CONTROLADORES / HANDLERS
+    // ========================================================
+
+    public static function get_stats($request) {
+        $stats = PJB_Database::get_stats_summary();
+        return rest_ensure_response(array('success' => true, 'data' => $stats));
+    }
+
+    public static function get_beneficiaries($request) {
+        $filters = array(
+            'query' => $request->get_param('query'),
+            'neighborhood' => $request->get_param('neighborhood'),
+            'vulnerability' => $request->get_param('vulnerability'),
+            'status' => $request->get_param('status'),
+        );
+        $list = PJB_Database::search_beneficiaries($filters);
+        return rest_ensure_response(array('success' => true, 'count' => count($list), 'data' => $list));
+    }
+
+    public static function get_beneficiary_details($request) {
+        $id = $request->get_param('id');
+        $ben = PJB_Database::get_beneficiary_by_id($id);
+        if (!$ben) {
+            return new WP_Error('not_found', 'Beneficiário não encontrado.', array('status' => 404));
+        }
+
+        $all_classes = PJB_Database::get_classes();
+        $enrolled = array_filter($all_classes, function ($c) use ($id) {
+            return in_array($id, $c['enrolledStudentIds']);
+        });
+
+        $attendance_stats = PJB_Database::get_student_stats($id);
+        $certificates = PJB_Database::get_certificates_by_student($id);
+        $donations = PJB_Database::get_donations_by_beneficiary($id);
+
+        return rest_ensure_response(array(
+            'success' => true,
+            'data' => array(
+                'beneficiary' => $ben,
+                'enrolledClasses' => array_values($enrolled),
+                'attendanceStats' => $attendance_stats,
+                'certificates' => $certificates,
+                'donationsReceived' => $donations,
+            ),
+        ));
+    }
+
+    public static function create_beneficiary($request) {
+        $params = $request->get_json_params() ?: $request->get_params();
+
+        if (empty($params['name']) || empty($params['cpf']) || empty($params['phone']) || empty($params['address']['neighborhood'])) {
+            return new WP_Error('invalid_data', 'Nome, CPF, Telefone e Bairro são obrigatórios.', array('status' => 400));
+        }
+
+        $existing = PJB_Database::get_beneficiary_by_cpf($params['cpf']);
+        if ($existing) {
+            return new WP_Error('conflict', 'Já existe um cadastro com este CPF no Projeto Brasil dos Jovens.', array('status' => 409));
+        }
+
+        $created = PJB_Database::create_beneficiary($params);
+        if (!$created) {
+            return new WP_Error('db_error', 'Falha ao salvar beneficiário no banco de dados.', array('status' => 500));
+        }
+
+        // Gera link de boas-vindas para o WhatsApp
+        $clean_phone = preg_replace('/\D/', '', $created['phone']);
+        $whatsapp_link = null;
+        if (!empty($clean_phone)) {
+            $msg = "Olá, {$created['name']}! Bem-vindo(a) ao Projeto Brasil dos Jovens (PJB) em Castanhal! Seu cadastro institucional foi confirmado com sucesso. Em breve informaremos sobre o início das turmas e oficinas!";
+            $whatsapp_link = "https://wa.me/55{$clean_phone}?text=" . rawurlencode($msg);
+        }
+
+        return rest_ensure_response(array(
+            'success' => true,
+            'message' => 'Cadastro realizado com sucesso!',
+            'data' => $created,
+            'whatsappLink' => $whatsapp_link,
+        ));
+    }
+
+    public static function update_beneficiary($request) {
+        $id = $request->get_param('id');
+        $params = $request->get_json_params() ?: $request->get_params();
+
+        $updated = PJB_Database::update_beneficiary($id, $params);
+        if (!$updated) {
+            return new WP_Error('not_found', 'Beneficiário não encontrado para atualização.', array('status' => 404));
+        }
+
+        return rest_ensure_response(array(
+            'success' => true,
+            'message' => 'Cadastro atualizado com sucesso.',
+            'data' => $updated,
+        ));
+    }
+
+    public static function delete_beneficiary($request) {
+        $id = $request->get_param('id');
+        $deleted = PJB_Database::delete_beneficiary($id);
+        if (!$deleted) {
+            return new WP_Error('not_found', 'Beneficiário não encontrado.', array('status' => 404));
+        }
+        return rest_ensure_response(array('success' => true, 'message' => 'Registro excluído com sucesso.'));
+    }
+
+    public static function get_courses($request) {
+        $list = PJB_Database::get_courses();
+        return rest_ensure_response(array('success' => true, 'count' => count($list), 'data' => $list));
+    }
+
+    public static function create_course($request) {
+        $params = $request->get_json_params() ?: $request->get_params();
+        if (empty($params['name']) || empty($params['workloadHours'])) {
+            return new WP_Error('invalid_data', 'Nome e carga horária são obrigatórios.', array('status' => 400));
+        }
+        $created = PJB_Database::create_course($params);
+        return rest_ensure_response(array('success' => true, 'data' => $created));
+    }
+
+    public static function update_course($request) {
+        $id = $request->get_param('id');
+        $params = $request->get_json_params() ?: $request->get_params();
+        $updated = PJB_Database::update_course($id, $params);
+        if (!$updated) {
+            return new WP_Error('not_found', 'Curso não encontrado para atualização.', array('status' => 404));
+        }
+        return rest_ensure_response(array('success' => true, 'message' => 'Curso atualizado com sucesso.', 'data' => $updated));
+    }
+
+    public static function delete_course($request) {
+        $id = $request->get_param('id');
+        $all_classes = PJB_Database::get_classes();
+        foreach ($all_classes as $c) {
+            if ($c['courseId'] === $id) {
+                return new WP_Error('has_linked_classes', 'Não é possível excluir este curso pois existem turmas vinculadas a ele.', array('status' => 400));
+            }
+        }
+        $deleted = PJB_Database::delete_course($id);
+        if (!$deleted) {
+            return new WP_Error('not_found', 'Curso não encontrado.', array('status' => 404));
+        }
+        return rest_ensure_response(array('success' => true, 'message' => 'Curso excluído com sucesso.'));
+    }
+
+    public static function get_classes($request) {
+        $list = PJB_Database::get_classes();
+        return rest_ensure_response(array('success' => true, 'count' => count($list), 'data' => $list));
+    }
+
+    public static function create_class($request) {
+        $params = $request->get_json_params() ?: $request->get_params();
+        if (empty($params['courseId'])) {
+            return new WP_Error('invalid_data', 'Curso selecionado é obrigatório.', array('status' => 400));
+        }
+
+        $course = PJB_Database::get_course_by_id($params['courseId']);
+        if (!$course) {
+            return new WP_Error('not_found', 'Curso não existe.', array('status' => 400));
+        }
+
+        $params['courseName'] = $course['name'];
+        if (empty($params['code'])) {
+            $params['code'] = 'TURMA-' . substr(time(), -4);
+        }
+
+        $created = PJB_Database::create_class($params);
+        return rest_ensure_response(array('success' => true, 'data' => $created));
+    }
+
+    public static function update_class($request) {
+        $id = $request->get_param('id');
+        $params = $request->get_json_params() ?: $request->get_params();
+        $updated = PJB_Database::update_class($id, $params);
+        if (!$updated) {
+            return new WP_Error('not_found', 'Turma não encontrada para atualização.', array('status' => 404));
+        }
+        return rest_ensure_response(array('success' => true, 'message' => 'Turma atualizada com sucesso.', 'data' => $updated));
+    }
+
+    public static function delete_class($request) {
+        $id = $request->get_param('id');
+        $deleted = PJB_Database::delete_class($id);
+        if (!$deleted) {
+            return new WP_Error('not_found', 'Turma não encontrada.', array('status' => 404));
+        }
+        return rest_ensure_response(array('success' => true, 'message' => 'Turma excluída com sucesso.'));
+    }
+
+    public static function enroll_student($request) {
+        $class_id = $request->get_param('id');
+        $params = $request->get_json_params() ?: $request->get_params();
+        $student_id = $params['studentId'] ?? '';
+        $student_ids = $params['studentIds'] ?? null;
+
+        if (empty($student_id) && empty($student_ids)) {
+            return new WP_Error('invalid_data', 'studentId ou studentIds é obrigatório.', array('status' => 400));
+        }
+
+        $target_ids = !empty($student_ids) && is_array($student_ids) ? $student_ids : array($student_id);
+
+        $updated = PJB_Database::enroll_student($class_id, $target_ids);
+        if (!$updated) {
+            return new WP_Error('not_found', 'Turma ou aluno não localizado.', array('status' => 404));
+        }
+        return rest_ensure_response(array('success' => true, 'message' => 'Matrícula efetuada com sucesso.', 'data' => $updated));
+    }
+
+    public static function remove_student($request) {
+        $class_id = $request->get_param('id');
+        $student_id = $request->get_param('studentId');
+
+        $updated = PJB_Database::remove_student($class_id, $student_id);
+        if (!$updated) {
+            return new WP_Error('not_found', 'Turma não encontrada.', array('status' => 404));
+        }
+        return rest_ensure_response(array('success' => true, 'message' => 'Aluno desmatriculado da turma.', 'data' => $updated));
+    }
+
+    public static function get_class_students($request) {
+        $class_id = $request->get_param('id');
+        $students = PJB_Database::get_class_students($class_id);
+        return rest_ensure_response(array('success' => true, 'count' => count($students), 'data' => $students));
+    }
+
+    public static function get_attendance($request) {
+        $class_id = $request->get_param('classId');
+        $list = PJB_Database::get_attendance_by_class($class_id);
+        return rest_ensure_response(array('success' => true, 'data' => $list));
+    }
+
+    public static function record_attendance($request) {
+        $params = $request->get_json_params() ?: $request->get_params();
+        if (empty($params['classId']) || empty($params['date']) || !isset($params['records'])) {
+            return new WP_Error('invalid_data', 'classId, date e records são obrigatórios.', array('status' => 400));
+        }
+
+        $recorded = PJB_Database::record_attendance(
+            $params['classId'],
+            $params['date'],
+            $params['topic'] ?? 'Aula regular',
+            $params['records']
+        );
+
+        return rest_ensure_response(array(
+            'success' => true,
+            'message' => 'Frequência registrada com sucesso.',
+            'data' => $recorded,
+        ));
+    }
+
+    public static function get_absence_alerts($request) {
+        // Retorna alertas vazios ou computados
+        return rest_ensure_response(array('success' => true, 'count' => 0, 'data' => array()));
+    }
+
+    public static function get_certificates($request) {
+        $list = PJB_Database::get_certificates();
+        return rest_ensure_response(array('success' => true, 'count' => count($list), 'data' => $list));
+    }
+
+    public static function issue_certificate($request) {
+        $params = $request->get_json_params() ?: $request->get_params();
+        if (empty($params['studentId']) || empty($params['courseId'])) {
+            return new WP_Error('invalid_data', 'studentId e courseId são obrigatórios.', array('status' => 400));
+        }
+
+        $issued = PJB_Database::issue_certificate(
+            $params['studentId'],
+            $params['courseId'],
+            $params['issuedBy'] ?? 'Coordenação Geral PJB'
+        );
+
+        if (!$issued) {
+            return new WP_Error('issue_failed', 'Não foi possível emitir o certificado. Verifique aluno e curso.', array('status' => 400));
+        }
+
+        return rest_ensure_response(array(
+            'success' => true,
+            'message' => 'Certificado emitido com sucesso.',
+            'data' => $issued,
+        ));
+    }
+
+    public static function verify_certificate($request) {
+        $code = $request->get_param('code');
+        $cert = PJB_Database::get_certificate_by_code($code);
+
+        if (!$cert) {
+            return new WP_Error('not_found', 'Código de certificado não localizado ou inválido no registro oficial do PJB.', array('status' => 404));
+        }
+
+        $sig = PJB_Crypto::generate_signature(array(
+            'code' => $cert['code'],
+            'studentId' => $cert['studentId'],
+            'courseId' => $cert['courseId'],
+            'issueDate' => $cert['issueDate'],
+            'workloadHours' => $cert['workloadHours'],
+        ));
+
+        return rest_ensure_response(array(
+            'success' => true,
+            'valid' => true,
+            'message' => 'Certificado autêntico expedido pelo Projeto Brasil dos Jovens (Castanhal/PA).',
+            'data' => array_merge($cert, array(
+                'digitalSignature' => $sig['signature'],
+                'signatureAlgorithm' => $sig['algorithm'],
+                'keyId' => $sig['keyId'],
+                'institution' => $sig['institution'],
+                'signedAt' => $sig['signedAt'],
+            )),
+        ));
+    }
+
+    public static function lookup_certificates_by_cpf($request) {
+        $raw_cpf = $request->get_param('cpf');
+        $clean_cpf = preg_replace('/\D/', '', $raw_cpf);
+
+        if (empty($clean_cpf) || strlen($clean_cpf) < 11) {
+            return new WP_Error('invalid_cpf', 'Por favor, informe um CPF válido com 11 dígitos.', array('status' => 400));
+        }
+
+        $certs = PJB_Database::get_certificates_by_cpf($clean_cpf);
+
+        if (empty($certs)) {
+            return new WP_Error('not_found', 'Nenhum certificado emitido foi localizado para este CPF no Projeto Brasil dos Jovens.', array('status' => 404));
+        }
+
+        $enhanced = array_map(function ($cert) {
+            $sig = PJB_Crypto::generate_signature(array(
+                'code' => $cert['code'],
+                'studentId' => $cert['studentId'],
+                'courseId' => $cert['courseId'],
+                'issueDate' => $cert['issueDate'],
+                'workloadHours' => $cert['workloadHours'],
+            ));
+
+            return array_merge($cert, array(
+                'digitalSignature' => $sig['signature'],
+                'signatureAlgorithm' => $sig['algorithm'],
+                'keyId' => $sig['keyId'],
+                'institution' => $sig['institution'],
+                'signedAt' => $sig['signedAt'],
+            ));
+        }, $certs);
+
+        return rest_ensure_response(array(
+            'success' => true,
+            'count' => count($enhanced),
+            'message' => count($enhanced) . ' certificado(s) localizado(s) com sucesso.',
+            'data' => $enhanced,
+        ));
+    }
+
+    public static function get_campaigns($request) {
+        $list = PJB_Database::get_campaigns();
+        return rest_ensure_response(array('success' => true, 'count' => count($list), 'data' => $list));
+    }
+
+    public static function get_campaign($request) {
+        $id = $request->get_param('id');
+        $camp = PJB_Database::get_campaign_by_id($id);
+        if (!$camp) {
+            return new WP_Error('not_found', 'Campanha não encontrada.', array('status' => 404));
+        }
+        $donations = PJB_Database::get_donations();
+        $linked = array_values(array_filter($donations, function($d) use ($id) {
+            return !empty($d['campaignId']) && $d['campaignId'] === $id;
+        }));
+        $camp['donations'] = $linked;
+        return rest_ensure_response(array('success' => true, 'data' => $camp));
+    }
+
+    public static function create_campaign($request) {
+        $params = $request->get_json_params() ?: $request->get_params();
+        $created = PJB_Database::create_campaign($params);
+        return rest_ensure_response(array('success' => true, 'data' => $created));
+    }
+
+    public static function update_campaign($request) {
+        $id = $request->get_param('id');
+        $params = $request->get_json_params() ?: $request->get_params();
+        $updated = PJB_Database::update_campaign($id, $params);
+        if (!$updated) {
+            return new WP_Error('not_found', 'Campanha não encontrada.', array('status' => 404));
+        }
+        return rest_ensure_response(array('success' => true, 'data' => $updated));
+    }
+
+    public static function update_campaign_status($request) {
+        $id = $request->get_param('id');
+        $params = $request->get_json_params() ?: $request->get_params();
+        $status = sanitize_text_field($params['status'] ?? '');
+        if (!in_array($status, array('planejamento', 'em_andamento', 'concluida'))) {
+            return new WP_Error('invalid_status', 'Status inválido. Use planejamento, em_andamento ou concluida.', array('status' => 400));
+        }
+        $updated = PJB_Database::update_campaign($id, array('status' => $status));
+        if (!$updated) {
+            return new WP_Error('not_found', 'Campanha não encontrada.', array('status' => 404));
+        }
+        return rest_ensure_response(array('success' => true, 'data' => $updated));
+    }
+
+    public static function delete_campaign($request) {
+        $id = $request['id'];
+        $deleted = PJB_Database::delete_campaign($id);
+        return rest_ensure_response(array('success' => $deleted));
+    }
+
+    public static function get_donations($request) {
+        $list = PJB_Database::get_donations();
+        $inv = PJB_Database::get_inventory_summary();
+        return rest_ensure_response(array(
+            'success' => true,
+            'inventory' => $inv,
+            'count' => count($list),
+            'data' => $list,
+        ));
+    }
+
+    public static function create_donation($request) {
+        $params = $request->get_json_params() ?: $request->get_params();
+        if (empty($params['type']) || empty($params['category']) || empty($params['itemDescription']) || empty($params['quantity'])) {
+            return new WP_Error('invalid_data', 'Campos essenciais da movimentação não informados.', array('status' => 400));
+        }
+
+        if ($params['type'] === 'saida' && !empty($params['beneficiaryId'])) {
+            $ben = PJB_Database::get_beneficiary_by_id($params['beneficiaryId']);
+            if ($ben) {
+                $params['beneficiaryName'] = $ben['name'];
+            }
+        }
+
+        $created = PJB_Database::create_donation($params);
+        return rest_ensure_response(array(
+            'success' => true,
+            'message' => 'Movimentação registrada com sucesso.',
+            'data' => $created,
+        ));
+    }
+
+    public static function delete_donation($request) {
+        $id = $request->get_param('id');
+        $deleted = PJB_Database::delete_donation($id);
+        if (!$deleted) {
+            return new WP_Error('not_found', 'Registro de doação não encontrado.', array('status' => 404));
+        }
+        return rest_ensure_response(array('success' => true, 'message' => 'Registro de doação excluído com sucesso.'));
+    }
+
+    public static function get_notifications($request) {
+        $list = PJB_Database::get_notifications();
+        return rest_ensure_response(array('success' => true, 'count' => count($list), 'data' => $list));
+    }
+
+    public static function send_notification($request) {
+        $params = $request->get_json_params() ?: $request->get_params();
+        if (empty($params['recipientPhone']) || empty($params['recipientName']) || empty($params['message'])) {
+            return new WP_Error('invalid_data', 'recipientPhone, recipientName e message são obrigatórios.', array('status' => 400));
+        }
+
+        $log = PJB_Database::log_notification($params);
+        return rest_ensure_response(array('success' => true, 'message' => 'Notificação registrada com sucesso.', 'data' => $log));
+    }
+
+    public static function get_whatsapp_link($request) {
+        $params = $request->get_json_params() ?: $request->get_params();
+        $phone = preg_replace('/\D/', '', $params['phone'] ?? '');
+        $msg = $params['message'] ?? '';
+        $link = "https://wa.me/55{$phone}?text=" . rawurlencode($msg);
+        return rest_ensure_response(array('success' => true, 'link' => $link));
+    }
+
+    public static function send_email_notification($request) {
+        $params = $request->get_json_params() ?: $request->get_params();
+        $to = sanitize_email($params['recipientEmail'] ?? $params['to'] ?? '');
+        $name = sanitize_text_field($params['recipientName'] ?? '');
+        $subject = sanitize_text_field($params['subject'] ?? 'Comunicado Oficial — Projeto Brasil dos Jovens');
+        $message = $params['message'] ?? '';
+        $beneficiary_id = sanitize_text_field($params['beneficiaryId'] ?? '');
+
+        if (empty($to) || !is_email($to) || empty($message)) {
+            return new WP_Error('invalid_data', 'Destinatário (e-mail válido) e mensagem são obrigatórios.', array('status' => 400));
+        }
+
+        if (class_exists('PJB_SMTP')) {
+            $res = PJB_SMTP::send_email($to, $subject, $message, true);
+        } else {
+            $sent = wp_mail($to, $subject, $message, array('Content-Type: text/html; charset=UTF-8'));
+            $res = array('success' => $sent, 'error' => $sent ? null : 'Falha no wp_mail.');
+        }
+
+        if (!$res['success']) {
+            return new WP_Error('mail_failed', 'Falha ao enviar e-mail: ' . ($res['error'] ?? 'Erro no servidor SMTP'), array('status' => 500));
+        }
+
+        // Registra no histórico de notificações
+        $log = PJB_Database::log_notification(array(
+            'channel' => 'email',
+            'type' => $params['type'] ?? 'custom',
+            'recipientName' => $name ?: $to,
+            'recipientPhone' => $to,
+            'message' => $message,
+            'beneficiaryId' => $beneficiary_id,
+            'status' => 'sent',
+        ));
+
+        return rest_ensure_response(array(
+            'success' => true,
+            'message' => 'E-mail enviado com sucesso via SMTP!',
+            'data' => $log,
+        ));
+    }
+
+    public static function ai_social_assessment($request) {
+        $params = $request->get_json_params() ?: $request->get_params();
+        $ben_id = $params['beneficiaryId'] ?? '';
+        $ben = PJB_Database::get_beneficiary_by_id($ben_id);
+        if (!$ben) {
+            return new WP_Error('not_found', 'Beneficiário não encontrado.', array('status' => 404));
+        }
+
+        $all_classes = PJB_Database::get_classes();
+        $classes = array_values(array_filter($all_classes, function ($c) use ($ben_id) {
+            return in_array($ben_id, $c['enrolledStudentIds']);
+        }));
+        $donations = PJB_Database::get_donations_by_beneficiary($ben_id);
+
+        $result = PJB_AI_Service::generate_social_assessment($ben, $classes, $donations);
+        return rest_ensure_response(array('success' => true, 'data' => $result));
+    }
+
+    public static function ai_grant_report($request) {
+        $summary = PJB_Database::get_stats_summary();
+        $campaigns = PJB_Database::get_campaigns();
+        $donations = PJB_Database::get_donations();
+
+        $result = PJB_AI_Service::generate_grant_report($summary, $campaigns, $donations);
+        return rest_ensure_response(array('success' => true, 'data' => $result));
+    }
+
+    public static function ai_grant_proposal($request) {
+        $params = $request->get_json_params() ?: $request->get_params();
+        $result = PJB_AI_Service::generate_grant_proposal($params);
+        return rest_ensure_response(array('success' => true, 'data' => $result));
+    }
+
+    // ========================================================
+    // BACKUP E MIGRAÇÃO DE DADOS
+    // ========================================================
+
+    public static function export_backup($request) {
+        $backup = PJB_Database::export_backup();
+        $response = rest_ensure_response($backup);
+        $filename = 'pjb_backup_' . gmdate('Y-m-d_H-i-s') . '.json';
+        $response->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+        return $response;
+    }
+
+    public static function import_backup($request) {
+        $params = $request->get_json_params();
+        if (empty($params)) {
+            $params = $request->get_params();
+        }
+        $mode = isset($params['mode']) ? sanitize_text_field($params['mode']) : 'merge';
+        $payload = isset($params['data']) ? $params['data'] : $params;
+
+        $result = PJB_Database::import_backup($payload, $mode);
+        if (!$result['success']) {
+            return new WP_Error('import_error', $result['error'] ?? 'Falha na importação do backup.', array('status' => 400));
+        }
+
+        return rest_ensure_response(array(
+            'success' => true,
+            'message' => 'Backup importado com sucesso.',
+            'imported' => $result['imported'] ?? array(),
+            'stats' => PJB_Database::get_backup_summary(),
+        ));
+    }
+
+    public static function get_backup_summary($request) {
+        $summary = PJB_Database::get_backup_summary();
+        return rest_ensure_response(array('success' => true, 'data' => $summary));
+    }
+
+    // ========================================================
+    // AÇÕES CULTURAIS, ESPORTIVAS, MÚSICA & JOGOS
+    // ========================================================
+    public static function get_activities($request) {
+        $filters = array(
+            'type' => $request->get_param('type') ?: 'todos',
+            'status' => $request->get_param('status') ?: 'todos',
+            'modality' => $request->get_param('modality') ?: 'todas',
+        );
+        $list = PJB_Database::get_cultural_activities($filters);
+        return rest_ensure_response(array('success' => true, 'count' => count($list), 'data' => $list));
+    }
+
+    public static function get_activity($request) {
+        $id = $request->get_param('id');
+        $act = PJB_Database::get_cultural_activity_by_id($id);
+        if (!$act) {
+            return new WP_Error('not_found', 'Ação cultural/esportiva não encontrada.', array('status' => 404));
+        }
+        return rest_ensure_response(array('success' => true, 'data' => $act));
+    }
+
+    public static function create_activity($request) {
+        $params = $request->get_json_params() ?: $request->get_params();
+        if (empty($params['title']) || empty($params['modality'])) {
+            return new WP_Error('invalid_data', 'Título e modalidade são obrigatórios.', array('status' => 400));
+        }
+        $created = PJB_Database::create_cultural_activity($params);
+        if (!$created) {
+            return new WP_Error('create_failed', 'Erro ao criar ação cultural/esportiva.', array('status' => 500));
+        }
+        return rest_ensure_response(array('success' => true, 'data' => $created));
+    }
+
+    public static function update_activity($request) {
+        $id = $request->get_param('id');
+        $params = $request->get_json_params() ?: $request->get_params();
+        $updated = PJB_Database::update_cultural_activity($id, $params);
+        if (!$updated) {
+            return new WP_Error('not_found', 'Ação cultural/esportiva não encontrada.', array('status' => 404));
+        }
+        return rest_ensure_response(array('success' => true, 'data' => $updated));
+    }
+
+    public static function update_activity_status($request) {
+        $id = $request->get_param('id');
+        $params = $request->get_json_params() ?: $request->get_params();
+        $status = sanitize_text_field($params['status'] ?? '');
+        if (!in_array($status, array('planejado', 'em_andamento', 'concluido', 'cancelado'))) {
+            return new WP_Error('invalid_status', 'Status inválido. Use planejado, em_andamento, concluido ou cancelado.', array('status' => 400));
+        }
+        $updated = PJB_Database::update_cultural_activity($id, array('status' => $status));
+        if (!$updated) {
+            return new WP_Error('not_found', 'Ação cultural/esportiva não encontrada.', array('status' => 404));
+        }
+        return rest_ensure_response(array('success' => true, 'data' => $updated));
+    }
+
+    public static function delete_activity($request) {
+        $id = $request->get_param('id');
+        $deleted = PJB_Database::delete_cultural_activity($id);
+        return rest_ensure_response(array('success' => $deleted));
+    }
+
+    public static function add_activity_participant($request) {
+        $id = $request->get_param('id');
+        $params = $request->get_json_params() ?: $request->get_params();
+        if (empty($params['beneficiaryName'])) {
+            return new WP_Error('invalid_data', 'Nome do beneficiário participante é obrigatório.', array('status' => 400));
+        }
+        $updated = PJB_Database::add_cultural_participant($id, $params);
+        if (!$updated) {
+            return new WP_Error('not_found', 'Ação não encontrada.', array('status' => 404));
+        }
+        return rest_ensure_response(array('success' => true, 'data' => $updated));
+    }
+
+    public static function update_activity_participant($request) {
+        $id = $request->get_param('id');
+        $participant_id = $request->get_param('participantId');
+        $params = $request->get_json_params() ?: $request->get_params();
+        $updated = PJB_Database::update_cultural_participant($id, $participant_id, $params);
+        if (!$updated) {
+            return new WP_Error('not_found', 'Participante ou ação não encontrada.', array('status' => 404));
+        }
+        return rest_ensure_response(array('success' => true, 'data' => $updated));
+    }
+
+    public static function delete_activity_participant($request) {
+        $id = $request->get_param('id');
+        $participant_id = $request->get_param('participantId');
+        $updated = PJB_Database::remove_cultural_participant($id, $participant_id);
+        if (!$updated) {
+            return new WP_Error('not_found', 'Participante ou ação não encontrada.', array('status' => 404));
+        }
+        return rest_ensure_response(array('success' => true, 'data' => $updated));
+    }
+
+    public static function add_activity_supporter($request) {
+        $id = $request->get_param('id');
+        $params = $request->get_json_params() ?: $request->get_params();
+        if (empty($params['name']) || empty($params['contribution'])) {
+            return new WP_Error('invalid_data', 'Nome e contribuição do apoiador/beneficiador são obrigatórios.', array('status' => 400));
+        }
+        $updated = PJB_Database::add_cultural_supporter($id, $params);
+        if (!$updated) {
+            return new WP_Error('not_found', 'Ação não encontrada.', array('status' => 404));
+        }
+        return rest_ensure_response(array('success' => true, 'data' => $updated));
+    }
+
+    public static function delete_activity_supporter($request) {
+        $id = $request->get_param('id');
+        $supporter_id = $request->get_param('supporterId');
+        $updated = PJB_Database::remove_cultural_supporter($id, $supporter_id);
+        if (!$updated) {
+            return new WP_Error('not_found', 'Apoiador ou ação não encontrada.', array('status' => 404));
+        }
+        return rest_ensure_response(array('success' => true, 'data' => $updated));
+    }
+
+    // ========================================================
+    // SAÚDE & JURÍDICO - ATENDIMENTOS E PROFISSIONAIS
+    // ========================================================
+
+    public static function get_attendance_stats($request) {
+        $stats = PJB_Database::get_attendance_stats();
+        return rest_ensure_response(array('success' => true, 'data' => $stats));
+    }
+
+    public static function get_attendance_professionals($request) {
+        $area = $request->get_param('area');
+        $active = $request->get_param('active');
+        $filters = array();
+        if ($area) $filters['area'] = sanitize_text_field($area);
+        if ($active !== null) $filters['active'] = $active;
+
+        $list = PJB_Database::get_attendance_professionals($filters);
+        return rest_ensure_response(array('success' => true, 'count' => count($list), 'data' => $list));
+    }
+
+    public static function get_attendance_professional($request) {
+        $id = $request->get_param('id');
+        $item = PJB_Database::get_attendance_professional_by_id($id);
+        if (!$item) {
+            return new WP_Error('not_found', 'Profissional não encontrado.', array('status' => 404));
+        }
+        return rest_ensure_response(array('success' => true, 'data' => $item));
+    }
+
+    public static function create_attendance_professional($request) {
+        $params = $request->get_json_params() ?: $request->get_params();
+        if (empty($params['name']) || empty($params['area']) || empty($params['specialty'])) {
+            return new WP_Error('invalid_data', 'Nome, área e especialidade são campos obrigatórios.', array('status' => 400));
+        }
+        $created = PJB_Database::create_attendance_professional($params);
+        if (!$created) {
+            return new WP_Error('create_failed', 'Erro ao cadastrar profissional.', array('status' => 500));
+        }
+        return rest_ensure_response(array('success' => true, 'data' => $created));
+    }
+
+    public static function update_attendance_professional($request) {
+        $id = $request->get_param('id');
+        $params = $request->get_json_params() ?: $request->get_params();
+        $updated = PJB_Database::update_attendance_professional($id, $params);
+        if (!$updated) {
+            return new WP_Error('not_found', 'Profissional não encontrado para atualização.', array('status' => 404));
+        }
+        return rest_ensure_response(array('success' => true, 'data' => $updated));
+    }
+
+    public static function delete_attendance_professional($request) {
+        $id = $request->get_param('id');
+        $deleted = PJB_Database::delete_attendance_professional($id);
+        return rest_ensure_response(array('success' => $deleted));
+    }
+
+    public static function get_service_attendances($request) {
+        $filters = array(
+            'area' => $request->get_param('area'),
+            'status' => $request->get_param('status'),
+            'specialty' => $request->get_param('specialty'),
+            'beneficiaryId' => $request->get_param('beneficiaryId'),
+            'search' => $request->get_param('search'),
+        );
+        $list = PJB_Database::get_attendances($filters);
+        return rest_ensure_response(array('success' => true, 'count' => count($list), 'data' => $list));
+    }
+
+    public static function get_service_attendance($request) {
+        $id = $request->get_param('id');
+        $item = PJB_Database::get_attendance_by_id($id);
+        if (!$item) {
+            return new WP_Error('not_found', 'Atendimento não encontrado.', array('status' => 404));
+        }
+        return rest_ensure_response(array('success' => true, 'data' => $item));
+    }
+
+    public static function create_service_attendance($request) {
+        $params = $request->get_json_params() ?: $request->get_params();
+        if (empty($params['beneficiaryName']) || empty($params['area']) || empty($params['specialty']) || empty($params['chiefComplaint'])) {
+            return new WP_Error('invalid_data', 'Beneficiário, área, especialidade e queixa principal são obrigatórios.', array('status' => 400));
+        }
+        $created = PJB_Database::create_attendance($params);
+        if (!$created) {
+            return new WP_Error('create_failed', 'Erro ao registrar atendimento.', array('status' => 500));
+        }
+        return rest_ensure_response(array('success' => true, 'data' => $created));
+    }
+
+    public static function update_service_attendance($request) {
+        $id = $request->get_param('id');
+        $params = $request->get_json_params() ?: $request->get_params();
+        $updated = PJB_Database::update_attendance($id, $params);
+        if (!$updated) {
+            return new WP_Error('not_found', 'Atendimento não encontrado para atualização.', array('status' => 404));
+        }
+        return rest_ensure_response(array('success' => true, 'data' => $updated));
+    }
+
+    public static function update_service_attendance_status($request) {
+        $id = $request->get_param('id');
+        $params = $request->get_json_params() ?: $request->get_params();
+        $status = sanitize_text_field($params['status'] ?? '');
+        $updated = PJB_Database::update_attendance_status($id, $status);
+        if (!$updated) {
+            return new WP_Error('invalid_status', 'Status inválido ou atendimento não encontrado.', array('status' => 400));
+        }
+        return rest_ensure_response(array('success' => true, 'data' => $updated));
+    }
+
+    public static function delete_service_attendance($request) {
+        $id = $request->get_param('id');
+        $deleted = PJB_Database::delete_attendance($id);
+        return rest_ensure_response(array('success' => $deleted));
+    }
+
+    // ========================================================
+    // GESTÃO FINANCEIRA & DOAÇÕES MONETÁRIAS HANDLERS
+    // ========================================================
+    public static function get_financial_stats($request) {
+        $stats = PJB_Database::get_financial_stats();
+        return rest_ensure_response(array('success' => true, 'data' => $stats));
+    }
+
+    public static function get_financial_transactions($request) {
+        $filters = array(
+            'type' => $request->get_param('type'),
+            'status' => $request->get_param('status'),
+            'paymentMethod' => $request->get_param('paymentMethod'),
+            'search' => $request->get_param('search'),
+        );
+        $list = PJB_Database::get_financial_transactions($filters);
+        return rest_ensure_response(array('success' => true, 'count' => count($list), 'data' => $list));
+    }
+
+    public static function get_financial_transaction($request) {
+        $id = $request->get_param('id');
+        $item = PJB_Database::get_financial_transaction_by_id($id);
+        if (!$item) {
+            return new WP_Error('not_found', 'Lançamento financeiro não encontrado.', array('status' => 404));
+        }
+        return rest_ensure_response(array('success' => true, 'data' => $item));
+    }
+
+    public static function create_financial_transaction($request) {
+        $params = $request->get_json_params() ?: $request->get_params();
+        if (empty($params['type']) || empty($params['description']) || !isset($params['amount'])) {
+            return new WP_Error('invalid_data', 'Tipo, descrição e valor são obrigatórios.', array('status' => 400));
+        }
+        $created = PJB_Database::create_financial_transaction($params);
+        if (!$created) {
+            return new WP_Error('create_failed', 'Erro ao registrar movimentação financeira.', array('status' => 500));
+        }
+        return rest_ensure_response(array('success' => true, 'data' => $created));
+    }
+
+    public static function update_financial_transaction($request) {
+        $id = $request->get_param('id');
+        $params = $request->get_json_params() ?: $request->get_params();
+        $updated = PJB_Database::update_financial_transaction($id, $params);
+        if (!$updated) {
+            return new WP_Error('not_found', 'Lançamento financeiro não encontrado para atualização.', array('status' => 404));
+        }
+        return rest_ensure_response(array('success' => true, 'data' => $updated));
+    }
+
+    public static function update_financial_transaction_status($request) {
+        $id = $request->get_param('id');
+        $params = $request->get_json_params() ?: $request->get_params();
+        $status = sanitize_text_field($params['status'] ?? '');
+        $updated = PJB_Database::update_financial_transaction_status($id, $status);
+        if (!$updated) {
+            return new WP_Error('invalid_status', 'Status inválido ou lançamento não encontrado.', array('status' => 400));
+        }
+        return rest_ensure_response(array('success' => true, 'data' => $updated));
+    }
+
+    public static function delete_financial_transaction($request) {
+        $id = $request->get_param('id');
+        $deleted = PJB_Database::delete_financial_transaction($id);
+        return rest_ensure_response(array('success' => $deleted));
+    }
+}
+
