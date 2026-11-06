@@ -62,6 +62,7 @@ class PJB_Activator {
             active_vacancies int DEFAULT 30,
             status varchar(30) DEFAULT 'aberto',
             instructor_name varchar(255) DEFAULT 'Instrutor PJB',
+            min_schooling varchar(100) DEFAULT 'Livre',
             syllabus text DEFAULT NULL,
             PRIMARY KEY (id)
         ) $charset_collate;";

@@ -780,6 +780,8 @@ class PJB_REST_API {
                 'state' => 'PA',
                 'guardianName' => sanitize_text_field($params['guardianName'] ?? ''),
                 'guardianPhone' => sanitize_text_field($params['guardianPhone'] ?? ''),
+                'schoolingStatus' => sanitize_text_field($params['schoolingStatus'] ?? 'Não informado'),
+                'publicSchoolName' => sanitize_text_field($params['publicSchoolName'] ?? ''),
                 'vulnerabilityLevel' => 'baixa',
                 'serviceInterest' => $cls['courseName'],
             );

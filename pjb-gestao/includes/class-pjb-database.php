@@ -247,6 +247,7 @@ class PJB_Database {
             'activeVacancies' => (int) ($row['active_vacancies'] ?? 30),
             'status' => $row['status'] ?? 'aberto',
             'instructorName' => $row['instructor_name'] ?? 'Instrutor PJB',
+            'minSchooling' => $row['min_schooling'] ?? 'Livre',
             'syllabus' => $row['syllabus'] ?? '',
         );
     }
@@ -283,6 +284,7 @@ class PJB_Database {
             'active_vacancies' => (int) ($data['activeVacancies'] ?? $total_vacancies),
             'status' => sanitize_text_field($data['status'] ?? 'aberto'),
             'instructor_name' => sanitize_text_field($data['instructorName'] ?? 'Instrutor PJB'),
+            'min_schooling' => sanitize_text_field($data['minSchooling'] ?? 'Livre'),
             'syllabus' => isset($data['syllabus']) ? sanitize_textarea_field($data['syllabus']) : null,
         );
 
@@ -305,6 +307,7 @@ class PJB_Database {
         if (isset($data['activeVacancies'])) $fields['active_vacancies'] = (int) $data['activeVacancies'];
         if (isset($data['status'])) $fields['status'] = sanitize_text_field($data['status']);
         if (isset($data['instructorName'])) $fields['instructor_name'] = sanitize_text_field($data['instructorName']);
+        if (isset($data['minSchooling'])) $fields['min_schooling'] = sanitize_text_field($data['minSchooling']);
         if (isset($data['syllabus'])) $fields['syllabus'] = sanitize_textarea_field($data['syllabus']);
 
         if (!empty($fields)) {
