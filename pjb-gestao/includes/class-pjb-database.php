@@ -1185,6 +1185,24 @@ class PJB_Database {
     // ========================================================
     public static function format_attendance_professional($row) {
         if (!$row) return null;
+
+        $specific_dates = array();
+        if (!empty($row['specific_dates'])) {
+            $decoded = json_decode($row['specific_dates'], true);
+            $specific_dates = is_array($decoded) ? $decoded : array_filter(array_map('trim', explode(',', $row['specific_dates'])));
+        }
+
+        $available_days = array(1, 2, 3, 4, 5);
+        if (isset($row['available_days']) && $row['available_days'] !== '') {
+            $available_days = array_map('intval', explode(',', $row['available_days']));
+        }
+
+        $available_hours = array();
+        if (!empty($row['available_hours'])) {
+            $decoded_hours = json_decode($row['available_hours'], true);
+            $available_hours = is_array($decoded_hours) ? $decoded_hours : array_filter(array_map('trim', explode(',', $row['available_hours'])));
+        }
+
         return array(
             'id' => $row['id'],
             'name' => $row['name'],
@@ -1195,6 +1213,13 @@ class PJB_Database {
             'email' => $row['email'] ?? '',
             'organization' => $row['organization'] ?? 'Voluntário PJB',
             'shiftsDescription' => $row['shifts_description'] ?? '',
+            'scheduleType' => $row['schedule_type'] ?? 'weekly',
+            'specificDates' => $specific_dates,
+            'availableDays' => $available_days,
+            'shiftStartTime' => $row['shift_start_time'] ?? '14:00',
+            'shiftEndTime' => $row['shift_end_time'] ?? '18:00',
+            'slotDurationMinutes' => !empty($row['slot_duration_minutes']) ? intval($row['slot_duration_minutes']) : 30,
+            'availableHours' => $available_hours,
             'active' => (bool) $row['active'],
             'notes' => $row['notes'] ?? '',
             'createdAt' => $row['created_at'],
@@ -1239,6 +1264,10 @@ class PJB_Database {
         $table = $wpdb->prefix . 'pjb_attendance_professionals';
         $id = !empty($data['id']) ? $data['id'] : 'prof_' . wp_generate_uuid4();
 
+        $specific_dates = isset($data['specificDates']) && is_array($data['specificDates']) ? wp_json_encode($data['specificDates']) : null;
+        $available_days = isset($data['availableDays']) && is_array($data['availableDays']) ? implode(',', $data['availableDays']) : '1,2,3,4,5';
+        $available_hours = isset($data['availableHours']) && is_array($data['availableHours']) ? wp_json_encode($data['availableHours']) : null;
+
         $record = array(
             'id' => $id,
             'name' => sanitize_text_field($data['name']),
@@ -1249,6 +1278,13 @@ class PJB_Database {
             'email' => !empty($data['email']) ? sanitize_email($data['email']) : null,
             'organization' => sanitize_text_field($data['organization'] ?? 'Voluntário PJB'),
             'shifts_description' => sanitize_text_field($data['shiftsDescription'] ?? ($data['shifts_description'] ?? '')),
+            'schedule_type' => sanitize_text_field($data['scheduleType'] ?? 'weekly'),
+            'specific_dates' => $specific_dates,
+            'available_days' => $available_days,
+            'shift_start_time' => sanitize_text_field($data['shiftStartTime'] ?? '14:00'),
+            'shift_end_time' => sanitize_text_field($data['shiftEndTime'] ?? '18:00'),
+            'slot_duration_minutes' => !empty($data['slotDurationMinutes']) ? intval($data['slotDurationMinutes']) : 30,
+            'available_hours' => $available_hours,
             'active' => isset($data['active']) ? ($data['active'] ? 1 : 0) : 1,
             'notes' => !empty($data['notes']) ? sanitize_textarea_field($data['notes']) : null,
             'created_at' => current_time('mysql'),
@@ -1275,6 +1311,13 @@ class PJB_Database {
         if (isset($data['organization'])) $record['organization'] = sanitize_text_field($data['organization']);
         if (isset($data['shiftsDescription'])) $record['shifts_description'] = sanitize_text_field($data['shiftsDescription']);
         if (isset($data['shifts_description'])) $record['shifts_description'] = sanitize_text_field($data['shifts_description']);
+        if (isset($data['scheduleType'])) $record['schedule_type'] = sanitize_text_field($data['scheduleType']);
+        if (isset($data['specificDates'])) $record['specific_dates'] = is_array($data['specificDates']) ? wp_json_encode($data['specificDates']) : null;
+        if (isset($data['availableDays'])) $record['available_days'] = is_array($data['availableDays']) ? implode(',', $data['availableDays']) : $data['availableDays'];
+        if (isset($data['shiftStartTime'])) $record['shift_start_time'] = sanitize_text_field($data['shiftStartTime']);
+        if (isset($data['shiftEndTime'])) $record['shift_end_time'] = sanitize_text_field($data['shiftEndTime']);
+        if (isset($data['slotDurationMinutes'])) $record['slot_duration_minutes'] = intval($data['slotDurationMinutes']);
+        if (isset($data['availableHours'])) $record['available_hours'] = is_array($data['availableHours']) ? wp_json_encode($data['availableHours']) : null;
         if (isset($data['active'])) $record['active'] = $data['active'] ? 1 : 0;
         if (isset($data['notes'])) $record['notes'] = sanitize_textarea_field($data['notes']);
 

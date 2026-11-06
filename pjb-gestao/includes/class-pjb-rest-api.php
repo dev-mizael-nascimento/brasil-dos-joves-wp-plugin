@@ -1431,13 +1431,87 @@ class PJB_REST_API {
             return new WP_Error('missing_date', 'A data do agendamento é obrigatória.', array('status' => 400));
         }
 
+        $timestamp = strtotime($date);
+        $day_of_week = intval(date('w', $timestamp)); // 0=Dom, 1=Seg, ..., 6=Sab
+
         $all_slots = array('08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00');
         $prof = null;
+        $is_available_date = true;
+        $unavailability_reason = '';
+
         if (!empty($professional_id)) {
             $prof = PJB_Database::get_attendance_professional_by_id($professional_id);
-            if (!empty($prof['availableHours']) && is_array($prof['availableHours'])) {
-                $all_slots = $prof['availableHours'];
+            if ($prof) {
+                // 1. Validação estrita da escala
+                if (!empty($prof['scheduleType']) && $prof['scheduleType'] === 'specific_dates') {
+                    $specific = is_array($prof['specificDates'] ?? null) ? $prof['specificDates'] : array();
+                    if (!in_array($date, $specific)) {
+                        $is_available_date = false;
+                        $unavailability_reason = 'Este profissional atende apenas nas datas específicas de sua escala.';
+                    }
+                } elseif (!empty($prof['scheduleType']) && $prof['scheduleType'] === 'weekly') {
+                    $days = is_array($prof['availableDays'] ?? null) ? $prof['availableDays'] : array();
+                    if (!empty($days) && !in_array($day_of_week, $days)) {
+                        $is_available_date = false;
+                        $unavailability_reason = 'Este profissional não atende neste dia da semana.';
+                    }
+                } else {
+                    if (!empty($prof['specificDates']) && is_array($prof['specificDates'])) {
+                        if (!in_array($date, $prof['specificDates'])) {
+                            if (!empty($prof['availableDays']) && is_array($prof['availableDays'])) {
+                                if (!in_array($day_of_week, $prof['availableDays'])) {
+                                    $is_available_date = false;
+                                    $unavailability_reason = 'Data fora da escala do profissional.';
+                                }
+                            } else {
+                                $is_available_date = false;
+                                $unavailability_reason = 'Data fora da escala do profissional.';
+                            }
+                        }
+                    } elseif (!empty($prof['availableDays']) && is_array($prof['availableDays'])) {
+                        if (!in_array($day_of_week, $prof['availableDays'])) {
+                            $is_available_date = false;
+                            $unavailability_reason = 'Este profissional não atende neste dia da semana.';
+                        }
+                    }
+                }
+
+                // 2. Fatiamento dos horários pela duração média
+                if (!empty($prof['shiftStartTime']) && !empty($prof['shiftEndTime'])) {
+                    $start_parts = explode(':', $prof['shiftStartTime']);
+                    $end_parts = explode(':', $prof['shiftEndTime']);
+                    $start_minutes = (intval($start_parts[0]) * 60) + intval($start_parts[1] ?? 0);
+                    $end_minutes = (intval($end_parts[0]) * 60) + intval($end_parts[1] ?? 0);
+                    $duration = !empty($prof['slotDurationMinutes']) ? intval($prof['slotDurationMinutes']) : 30;
+
+                    if ($start_minutes < $end_minutes && $duration > 0) {
+                        $generated = array();
+                        for ($cur = $start_minutes; $cur + $duration <= $end_minutes; $cur += $duration) {
+                            $h = floor($cur / 60);
+                            $m = $cur % 60;
+                            $generated[] = sprintf('%02d:%02d', $h, $m);
+                        }
+                        if (!empty($generated)) {
+                            $all_slots = $generated;
+                        }
+                    }
+                } elseif (!empty($prof['availableHours']) && is_array($prof['availableHours'])) {
+                    $all_slots = $prof['availableHours'];
+                }
             }
+        }
+
+        if (!$is_available_date) {
+            return rest_ensure_response(array(
+                'success'         => true,
+                'date'            => $date,
+                'isAvailableDate' => false,
+                'reason'          => $unavailability_reason,
+                'professional'    => $prof ? array('id' => $prof['id'], 'name' => $prof['name'], 'specialty' => $prof['specialty']) : null,
+                'allSlots'        => array(),
+                'bookedSlots'     => array(),
+                'availableSlots'  => array(),
+            ));
         }
 
         $existing = PJB_Database::get_attendances(array(
@@ -1454,12 +1528,21 @@ class PJB_REST_API {
         $available = array_values(array_diff($all_slots, $booked_slots));
 
         return rest_ensure_response(array(
-            'success'        => true,
-            'date'           => $date,
-            'professional'   => $prof ? array('id' => $prof['id'], 'name' => $prof['name'], 'specialty' => $prof['specialty']) : null,
-            'allSlots'       => $all_slots,
-            'bookedSlots'    => $booked_slots,
-            'availableSlots' => $available,
+            'success'         => true,
+            'date'            => $date,
+            'isAvailableDate' => true,
+            'professional'    => $prof ? array(
+                'id'                  => $prof['id'],
+                'name'                => $prof['name'],
+                'specialty'           => $prof['specialty'],
+                'slotDurationMinutes' => $prof['slotDurationMinutes'] ?? 30,
+                'shiftStartTime'      => $prof['shiftStartTime'] ?? '14:00',
+                'shiftEndTime'        => $prof['shiftEndTime'] ?? '18:00',
+                'scheduleType'        => $prof['scheduleType'] ?? 'weekly',
+            ) : null,
+            'allSlots'        => $all_slots,
+            'bookedSlots'     => $booked_slots,
+            'availableSlots'  => $available,
         ));
     }
 

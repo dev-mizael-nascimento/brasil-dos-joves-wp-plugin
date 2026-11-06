@@ -2,15 +2,15 @@
   "name": "Projeto Brasil dos Jovens (PJB) - Gestão Social & Acadêmica",
   "slug": "pjb-gestao",
   "version": "1.0.1",
-  "last_commit": "96c97b7",
-  "last_commit_message": "chore: ajuste final no script de sincronizacao",
-  "last_updated": "2026-11-06 10:18:34",
+  "last_commit": "fed851c",
+  "last_commit_message": "feat: modulo de agendamento de servicos com busca de cpf calendario dinamico e comprovante",
+  "last_updated": "2026-11-06 10:48:51",
   "download_url": "https://raw.githubusercontent.com/viebmiza/brasil-dos-joves-wp-plugin/main/pjb-gestao.zip",
   "tested": "6.7",
   "requires": "6.0",
   "requires_php": "7.4",
   "sections": {
     "description": "Sistema completo de gestão social, qualificação profissional, controle de turmas, frequência, emissão de certificados oficiais com QR Code e captação de recursos com IA para o Projeto Brasil dos Jovens (PJB).",
-    "changelog": "Último commit: [96c97b7] chore: ajuste final no script de sincronizacao"
+    "changelog": "Último commit: [fed851c] feat: modulo de agendamento de servicos com busca de cpf calendario dinamico e comprovante"
   }
 }
