@@ -2,15 +2,15 @@
   "name": "Projeto Brasil dos Jovens (PJB) - Gestão Social & Acadêmica",
   "slug": "pjb-gestao",
   "version": "1.2.0",
-  "last_commit": "4cdd0e2",
-  "last_commit_message": "fix: resolver todos os erros do Plugin Check (PCP) e externalizar react/react-dom",
-  "last_updated": "2026-11-27 11:32:26",
+  "last_commit": "f038285",
+  "last_commit_message": "fix: externalizar react/react-dom mantendo CSS separado no build do plugin",
+  "last_updated": "2026-11-27 11:39:33",
   "download_url": "https://raw.githubusercontent.com/viebmiza/brasil-dos-joves-wp-plugin/main/pjb-gestao.zip",
   "tested": "6.7",
   "requires": "6.0",
   "requires_php": "7.4",
   "sections": {
     "description": "Sistema completo de gestão social, qualificação profissional, controle de turmas, frequência, emissão de certificados oficiais com QR Code e captação de recursos com IA para o Projeto Brasil dos Jovens (PJB).",
-    "changelog": "Último commit: [4cdd0e2] fix: resolver todos os erros do Plugin Check (PCP) e externalizar react/react-dom"
+    "changelog": "Último commit: [f038285] fix: externalizar react/react-dom mantendo CSS separado no build do plugin"
   }
 }

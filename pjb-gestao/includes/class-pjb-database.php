@@ -50,35 +50,32 @@ class PJB_Database {
         global $wpdb;
         $table = $wpdb->prefix . 'pjb_beneficiaries';
 
-        $where = array('1=%d');
-        $params = array(1);
+        $search_like = !empty($filters['query']) ? '%' . $wpdb->esc_like(trim($filters['query'])) . '%' : '';
+        $neighborhood = (!empty($filters['neighborhood']) && $filters['neighborhood'] !== 'todos') ? $filters['neighborhood'] : '';
+        $vulnerability = (!empty($filters['vulnerability']) && $filters['vulnerability'] !== 'todas') ? $filters['vulnerability'] : '';
+        $status = (!empty($filters['status']) && $filters['status'] !== 'todos') ? $filters['status'] : '';
 
-        if (!empty($filters['query'])) {
-            $like = '%' . $wpdb->esc_like(trim($filters['query'])) . '%';
-            $where[] = "(name LIKE %s OR cpf LIKE %s OR phone LIKE %s)";
-            $params[] = $like;
-            $params[] = $like;
-            $params[] = $like;
-        }
-
-        if (!empty($filters['neighborhood']) && $filters['neighborhood'] !== 'todos') {
-            $where[] = "neighborhood = %s";
-            $params[] = $filters['neighborhood'];
-        }
-
-        if (!empty($filters['vulnerability']) && $filters['vulnerability'] !== 'todas') {
-            $where[] = "vulnerability_level = %s";
-            $params[] = $filters['vulnerability'];
-        }
-
-        if (!empty($filters['status']) && $filters['status'] !== 'todos') {
-            $where[] = "status = %s";
-            $params[] = $filters['status'];
-        }
-
-        $sql = $wpdb->prepare("SELECT * FROM $table WHERE " . implode(' AND ', $where) . " ORDER BY registration_date DESC", $params);
-
-        $results = $wpdb->get_results($sql, ARRAY_A);
+        $results = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM $table
+                WHERE (%s = '' OR name LIKE %s OR cpf LIKE %s OR phone LIKE %s)
+                  AND (%s = '' OR neighborhood = %s)
+                  AND (%s = '' OR vulnerability_level = %s)
+                  AND (%s = '' OR status = %s)
+                ORDER BY registration_date DESC",
+                $search_like,
+                $search_like,
+                $search_like,
+                $search_like,
+                $neighborhood,
+                $neighborhood,
+                $vulnerability,
+                $vulnerability,
+                $status,
+                $status
+            ),
+            ARRAY_A
+        );
         return array_map(array(__CLASS__, 'format_beneficiary'), $results ?: array());
     }
 
@@ -922,25 +919,26 @@ class PJB_Database {
         $table_p = $wpdb->prefix . 'pjb_cultural_participants';
         $table_s = $wpdb->prefix . 'pjb_cultural_supporters';
 
-        $where = array('1=%d');
-        $params = array(1);
+        $type = (!empty($filters['type']) && $filters['type'] !== 'todos') ? $filters['type'] : '';
+        $status = (!empty($filters['status']) && $filters['status'] !== 'todos') ? $filters['status'] : '';
+        $modality = (!empty($filters['modality']) && $filters['modality'] !== 'todas') ? $filters['modality'] : '';
 
-        if (!empty($filters['type']) && $filters['type'] !== 'todos') {
-            $where[] = "type = %s";
-            $params[] = $filters['type'];
-        }
-        if (!empty($filters['status']) && $filters['status'] !== 'todos') {
-            $where[] = "status = %s";
-            $params[] = $filters['status'];
-        }
-        if (!empty($filters['modality']) && $filters['modality'] !== 'todas') {
-            $where[] = "modality = %s";
-            $params[] = $filters['modality'];
-        }
-
-        $sql = $wpdb->prepare("SELECT * FROM $table_a WHERE " . implode(' AND ', $where) . " ORDER BY start_date DESC", $params);
-
-        $rows = $wpdb->get_results($sql, ARRAY_A);
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM $table_a
+                WHERE (%s = '' OR type = %s)
+                  AND (%s = '' OR status = %s)
+                  AND (%s = '' OR modality = %s)
+                ORDER BY start_date DESC",
+                $type,
+                $type,
+                $status,
+                $status,
+                $modality,
+                $modality
+            ),
+            ARRAY_A
+        );
         if (!$rows) return array();
 
         // Agrupa participantes e apoiadores
@@ -1236,21 +1234,23 @@ class PJB_Database {
     public static function get_attendance_professionals($filters = array()) {
         global $wpdb;
         $table = $wpdb->prefix . 'pjb_attendance_professionals';
-        $where = array('1=%d');
-        $params = array(1);
+        $area = (!empty($filters['area']) && $filters['area'] !== 'todas' && $filters['area'] !== 'todos') ? $filters['area'] : '';
+        $has_active = (isset($filters['active']) && $filters['active'] !== '') ? 1 : 0;
+        $active_val = ($has_active && $filters['active']) ? 1 : 0;
 
-        if (!empty($filters['area']) && $filters['area'] !== 'todas' && $filters['area'] !== 'todos') {
-            $where[] = "area = %s";
-            $params[] = $filters['area'];
-        }
-        if (isset($filters['active']) && $filters['active'] !== '') {
-            $where[] = "active = %d";
-            $params[] = $filters['active'] ? 1 : 0;
-        }
-
-        $sql = $wpdb->prepare("SELECT * FROM $table WHERE " . implode(' AND ', $where) . " ORDER BY name ASC", $params);
-
-        $rows = $wpdb->get_results($sql, ARRAY_A);
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM $table
+                WHERE (%s = '' OR area = %s)
+                  AND (%d = 0 OR active = %d)
+                ORDER BY name ASC",
+                $area,
+                $area,
+                $has_active,
+                $active_val
+            ),
+            ARRAY_A
+        );
         if (!$rows) return array();
 
         return array_map(array(__CLASS__, 'format_attendance_professional'), $rows);
@@ -1382,37 +1382,37 @@ class PJB_Database {
     public static function get_attendances($filters = array()) {
         global $wpdb;
         $table = $wpdb->prefix . 'pjb_service_attendances';
-        $where = array('1=%d');
-        $params = array(1);
+        $area = (!empty($filters['area']) && $filters['area'] !== 'todas' && $filters['area'] !== 'todos') ? $filters['area'] : '';
+        $status = (!empty($filters['status']) && $filters['status'] !== 'todos') ? $filters['status'] : '';
+        $specialty = (!empty($filters['specialty']) && $filters['specialty'] !== 'todas') ? $filters['specialty'] : '';
+        $beneficiary_id = !empty($filters['beneficiaryId']) ? $filters['beneficiaryId'] : '';
+        $search_like = !empty($filters['search']) ? '%' . $wpdb->esc_like($filters['search']) . '%' : '';
 
-        if (!empty($filters['area']) && $filters['area'] !== 'todas' && $filters['area'] !== 'todos') {
-            $where[] = "area = %s";
-            $params[] = $filters['area'];
-        }
-        if (!empty($filters['status']) && $filters['status'] !== 'todos') {
-            $where[] = "status = %s";
-            $params[] = $filters['status'];
-        }
-        if (!empty($filters['specialty']) && $filters['specialty'] !== 'todas') {
-            $where[] = "specialty = %s";
-            $params[] = $filters['specialty'];
-        }
-        if (!empty($filters['beneficiaryId'])) {
-            $where[] = "beneficiary_id = %s";
-            $params[] = $filters['beneficiaryId'];
-        }
-        if (!empty($filters['search'])) {
-            $search_like = '%' . $wpdb->esc_like($filters['search']) . '%';
-            $where[] = "(beneficiary_name LIKE %s OR protocol_number LIKE %s OR professional_name LIKE %s OR chief_complaint LIKE %s)";
-            $params[] = $search_like;
-            $params[] = $search_like;
-            $params[] = $search_like;
-            $params[] = $search_like;
-        }
-
-        $sql = $wpdb->prepare("SELECT * FROM $table WHERE " . implode(' AND ', $where) . " ORDER BY date DESC, created_at DESC", $params);
-
-        $rows = $wpdb->get_results($sql, ARRAY_A);
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM $table
+                WHERE (%s = '' OR area = %s)
+                  AND (%s = '' OR status = %s)
+                  AND (%s = '' OR specialty = %s)
+                  AND (%s = '' OR beneficiary_id = %s)
+                  AND (%s = '' OR beneficiary_name LIKE %s OR protocol_number LIKE %s OR professional_name LIKE %s OR chief_complaint LIKE %s)
+                ORDER BY date DESC, created_at DESC",
+                $area,
+                $area,
+                $status,
+                $status,
+                $specialty,
+                $specialty,
+                $beneficiary_id,
+                $beneficiary_id,
+                $search_like,
+                $search_like,
+                $search_like,
+                $search_like,
+                $search_like
+            ),
+            ARRAY_A
+        );
         if (!$rows) return array();
 
         return array_map(array(__CLASS__, 'format_attendance'), $rows);
@@ -2100,37 +2100,34 @@ class PJB_Database {
         global $wpdb;
         $table = $wpdb->prefix . 'pjb_financial_transactions';
 
-        $where = array('1=%d');
-        $params = array(1);
+        $type = (!empty($filters['type']) && $filters['type'] !== 'todos') ? sanitize_text_field($filters['type']) : '';
+        $status = (!empty($filters['status']) && $filters['status'] !== 'todos') ? sanitize_text_field($filters['status']) : '';
+        $payment_method = (!empty($filters['paymentMethod']) && $filters['paymentMethod'] !== 'todos') ? sanitize_text_field($filters['paymentMethod']) : '';
+        $search_like = !empty($filters['search']) ? '%' . $wpdb->esc_like(sanitize_text_field($filters['search'])) . '%' : '';
 
-        if (!empty($filters['type']) && $filters['type'] !== 'todos') {
-            $where[] = 'type = %s';
-            $params[] = sanitize_text_field($filters['type']);
-        }
-
-        if (!empty($filters['status']) && $filters['status'] !== 'todos') {
-            $where[] = 'status = %s';
-            $params[] = sanitize_text_field($filters['status']);
-        }
-
-        if (!empty($filters['paymentMethod']) && $filters['paymentMethod'] !== 'todos') {
-            $where[] = 'payment_method = %s';
-            $params[] = sanitize_text_field($filters['paymentMethod']);
-        }
-
-        if (!empty($filters['search'])) {
-            $like = '%' . $wpdb->esc_like(sanitize_text_field($filters['search'])) . '%';
-            $where[] = '(description LIKE %s OR donor_or_supplier LIKE %s OR document_number LIKE %s OR receipt_number LIKE %s OR category LIKE %s)';
-            $params[] = $like;
-            $params[] = $like;
-            $params[] = $like;
-            $params[] = $like;
-            $params[] = $like;
-        }
-
-        $sql = $wpdb->prepare("SELECT * FROM $table WHERE " . implode(' AND ', $where) . " ORDER BY date DESC, created_at DESC", $params);
-
-        $rows = $wpdb->get_results($sql, ARRAY_A);
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM $table
+                WHERE (%s = '' OR type = %s)
+                  AND (%s = '' OR status = %s)
+                  AND (%s = '' OR payment_method = %s)
+                  AND (%s = '' OR description LIKE %s OR donor_or_supplier LIKE %s OR document_number LIKE %s OR receipt_number LIKE %s OR category LIKE %s)
+                ORDER BY date DESC, created_at DESC",
+                $type,
+                $type,
+                $status,
+                $status,
+                $payment_method,
+                $payment_method,
+                $search_like,
+                $search_like,
+                $search_like,
+                $search_like,
+                $search_like,
+                $search_like
+            ),
+            ARRAY_A
+        );
         return array_map(array(__CLASS__, 'format_financial_transaction'), $rows ?: array());
     }
 
