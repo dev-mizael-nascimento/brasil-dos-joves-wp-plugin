@@ -1,5 +1,5 @@
 === PJB Gestão Social & Acadêmica ===
-Contributors: brasildosjovens
+Contributors: MizaelgNascimento
 Tags: ong, cursos, certificados, agendamento, assistencia social
 Requires at least: 6.0
 Tested up to: 6.7
