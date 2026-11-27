@@ -204,7 +204,7 @@ class PJB_SMTP {
 
         check_admin_referer('pjb_test_smtp_nonce');
 
-        $to = sanitize_email($_POST['test_email'] ?? '');
+        $to = sanitize_email(wp_unslash($_POST['test_email'] ?? ''));
         if (empty($to) || !is_email($to)) {
             wp_redirect(add_query_arg(
                 array('page' => 'pjb-settings', 'tab' => 'smtp', 'smtp_error' => urlencode('Por favor, informe um e-mail válido para o teste.')),

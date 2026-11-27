@@ -372,7 +372,7 @@ class PJB_Database {
         $table = $wpdb->prefix . 'pjb_classes';
         $id = !empty($data['id']) ? $data['id'] : 'cls_' . wp_generate_uuid4();
 
-        $enrolled = isset($data['enrolledStudentIds']) ? json_encode($data['enrolledStudentIds']) : '[]';
+        $enrolled = isset($data['enrolledStudentIds']) ? wp_json_encode($data['enrolledStudentIds']) : '[]';
 
         $record = array(
             'id' => $id,
@@ -404,7 +404,7 @@ class PJB_Database {
         if (isset($data['endDate'])) $fields['end_date'] = sanitize_text_field($data['endDate']);
         if (isset($data['maxStudents'])) $fields['max_students'] = (int) $data['maxStudents'];
         if (isset($data['status'])) $fields['status'] = sanitize_text_field($data['status']);
-        if (isset($data['enrolledStudentIds'])) $fields['enrolled_students'] = json_encode($data['enrolledStudentIds']);
+        if (isset($data['enrolledStudentIds'])) $fields['enrolled_students'] = wp_json_encode($data['enrolledStudentIds']);
 
         if (!empty($fields)) {
             $wpdb->update($table, $fields, array('id' => $id));
@@ -500,7 +500,7 @@ class PJB_Database {
             'class_id' => sanitize_text_field($class_id),
             'date' => sanitize_text_field($date),
             'topic' => sanitize_text_field($topic ?: 'Aula regular'),
-            'records' => json_encode($records),
+            'records' => wp_json_encode($records),
         );
 
         $wpdb->insert($table, $record);
@@ -1893,8 +1893,8 @@ class PJB_Database {
                 if (empty($cls['courseName']) && empty($cls['course_name'])) continue;
                 $id = !empty($cls['id']) ? $cls['id'] : 'cls_' . wp_generate_uuid4();
                 $enrolled = isset($cls['enrolledStudentIds'])
-                    ? json_encode($cls['enrolledStudentIds'])
-                    : (isset($cls['enrolled_students']) ? (is_string($cls['enrolled_students']) ? $cls['enrolled_students'] : json_encode($cls['enrolled_students'])) : '[]');
+                    ? wp_json_encode($cls['enrolledStudentIds'])
+                    : (isset($cls['enrolled_students']) ? (is_string($cls['enrolled_students']) ? $cls['enrolled_students'] : wp_json_encode($cls['enrolled_students'])) : '[]');
 
                 $row = array(
                     'id' => $id,
@@ -1906,7 +1906,7 @@ class PJB_Database {
                     'start_date' => sanitize_text_field($cls['startDate'] ?? ($cls['start_date'] ?? date('Y-m-d'))),
                     'end_date' => sanitize_text_field($cls['endDate'] ?? ($cls['end_date'] ?? date('Y-m-d', strtotime('+60 days')))),
                     'max_students' => (int) ($cls['maxStudents'] ?? ($cls['max_students'] ?? 25)),
-                    'enrolled_students' => is_string($enrolled) ? $enrolled : json_encode($enrolled),
+                    'enrolled_students' => is_string($enrolled) ? $enrolled : wp_json_encode($enrolled),
                     'status' => sanitize_text_field($cls['status'] ?? 'ativa'),
                 );
 
@@ -1928,7 +1928,7 @@ class PJB_Database {
                 if (empty($classId)) continue;
                 $id = !empty($att['id']) ? $att['id'] : 'att_' . wp_generate_uuid4();
                 $records = isset($att['records'])
-                    ? (is_string($att['records']) ? $att['records'] : json_encode($att['records']))
+                    ? (is_string($att['records']) ? $att['records'] : wp_json_encode($att['records']))
                     : '[]';
 
                 $row = array(

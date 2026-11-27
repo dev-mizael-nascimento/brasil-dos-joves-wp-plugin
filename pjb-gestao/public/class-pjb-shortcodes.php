@@ -76,10 +76,6 @@ class PJB_Shortcodes {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title><?php echo esc_html($title); ?></title>
             <?php wp_head(); ?>
-            <style>
-                body, html { margin: 0; padding: 0; background: #0b1329; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-                #wpadminbar { display: none !important; }
-            </style>
         </head>
         <body <?php body_class('pjb-portal-body'); ?>>
             <div id="root"></div>
@@ -96,6 +92,10 @@ class PJB_Shortcodes {
         if (!empty($css_files)) {
             $css_url = PJB_PLUGIN_URL . 'build/assets/' . basename($css_files[0]);
             wp_enqueue_style('pjb-react-css', $css_url, array(), filemtime($css_files[0]));
+            wp_add_inline_style('pjb-react-css', '
+                body.pjb-portal-body, html:has(body.pjb-portal-body) { margin: 0; padding: 0; background: #0b1329; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+                body.pjb-portal-body #wpadminbar { display: none !important; }
+            ');
         }
 
         if (!empty($js_files)) {

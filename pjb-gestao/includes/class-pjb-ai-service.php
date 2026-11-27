@@ -23,7 +23,7 @@ class PJB_AI_Service {
 
         $model = self::get_model();
         $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . urlencode($model) . ':generateContent?key=' . urlencode($api_key);
-        $body = json_encode(array(
+        $body = wp_json_encode(array(
             'contents' => array(
                 array(
                     'parts' => array(

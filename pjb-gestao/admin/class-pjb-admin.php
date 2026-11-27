@@ -196,7 +196,7 @@ class PJB_Admin {
                 $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . urlencode($model) . ':generateContent?key=' . urlencode($key);
                 $response = wp_remote_post($url, array(
                     'headers' => array('Content-Type' => 'application/json'),
-                    'body' => json_encode(array(
+                    'body' => wp_json_encode(array(
                         'contents' => array(
                             array('parts' => array(array('text' => 'Responda apenas: CONEXAO_PJB_OK')))
                         )
@@ -255,7 +255,7 @@ class PJB_Admin {
             header('Expires: 0');
             header('Cache-Control: must-revalidate');
             header('Pragma: public');
-            echo json_encode($backup, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+            echo wp_json_encode($backup, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
             exit;
         }
 
