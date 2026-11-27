@@ -86,7 +86,7 @@ Estruture um parecer técnico com diagnóstico sociofamiliar, situação educaci
 
         // Parecer institucional em caso de ausência da chave da IA
         $assessment = "PARECER SOCIAL INSTITUCIONAL - PROJETO BRASIL DOS JOVENS\n" .
-            "Castanhal - PA | Data: " . date('d/m/Y') . "\n\n" .
+            "Castanhal - PA | Data: " . gmdate('d/m/Y') . "\n\n" .
             "1. IDENTIFICAÇÃO E DIAGNÓSTICO\n" .
             "Beneficiário: {$beneficiary['name']} (CPF: {$beneficiary['cpf']})\n" .
             "Residência: Bairro {$beneficiary['address']['neighborhood']}, Castanhal/PA.\n" .
@@ -127,7 +127,7 @@ Redija um relatório formal para apresentação a patrocinadores e editais.";
         }
 
         $report = "RELATÓRIO EXECUTIVO DE IMPACTO SOCIAL • PROJETO BRASIL DOS JOVENS (PJB)\n" .
-            "Polo Regional: Castanhal / Pará | Emissão: " . date('d/m/Y') . "\n\n" .
+            "Polo Regional: Castanhal / Pará | Emissão: " . gmdate('d/m/Y') . "\n\n" .
             "1. RESUMO EXECUTIVO\n" .
             "O Projeto Brasil dos Jovens atua diretamente no enfrentamento à vulnerabilidade social e na capacitação profissional de adolescentes e jovens em Castanhal/PA.\n\n" .
             "2. INDICADORES CONSOLIDADOS\n" .

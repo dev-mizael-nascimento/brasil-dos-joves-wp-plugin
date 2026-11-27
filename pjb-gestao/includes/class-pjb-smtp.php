@@ -206,7 +206,7 @@ class PJB_SMTP {
 
         $to = sanitize_email(wp_unslash($_POST['test_email'] ?? ''));
         if (empty($to) || !is_email($to)) {
-            wp_redirect(add_query_arg(
+            wp_safe_redirect(add_query_arg(
                 array('page' => 'pjb-settings', 'tab' => 'smtp', 'smtp_error' => urlencode('Por favor, informe um e-mail válido para o teste.')),
                 admin_url('admin.php')
             ));
@@ -226,13 +226,13 @@ class PJB_SMTP {
         $result = self::send_email($to, $subject, $message, true);
 
         if ($result['success']) {
-            wp_redirect(add_query_arg(
+            wp_safe_redirect(add_query_arg(
                 array('page' => 'pjb-settings', 'tab' => 'smtp', 'smtp_success' => urlencode("E-mail de teste enviado com sucesso para {$to}!")),
                 admin_url('admin.php')
             ));
         } else {
             $err = $result['error'] ?: 'Não foi possível estabelecer conexão com o servidor SMTP.';
-            wp_redirect(add_query_arg(
+            wp_safe_redirect(add_query_arg(
                 array('page' => 'pjb-settings', 'tab' => 'smtp', 'smtp_error' => urlencode("Falha no envio: {$err}")),
                 admin_url('admin.php')
             ));

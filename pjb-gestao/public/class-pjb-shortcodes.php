@@ -100,7 +100,7 @@ class PJB_Shortcodes {
 
         if (!empty($js_files)) {
             $js_url = PJB_PLUGIN_URL . 'build/assets/' . basename($js_files[0]);
-            wp_enqueue_script('pjb-react-js', $js_url, array(), filemtime($js_files[0]), true);
+            wp_enqueue_script('pjb-react-js', $js_url, array('react', 'react-dom'), filemtime($js_files[0]), true);
 
             $user_data = null;
             if (is_user_logged_in()) {

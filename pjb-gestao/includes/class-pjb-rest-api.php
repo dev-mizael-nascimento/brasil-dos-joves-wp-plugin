@@ -772,7 +772,7 @@ class PJB_REST_API {
 
             $birth_date = !empty($params['birthDate']) ? sanitize_text_field($params['birthDate']) : '2008-01-01';
             $b_year = (int) substr($birth_date, 0, 4);
-            $age = $b_year > 1900 ? max(1, (int) date('Y') - $b_year) : 16;
+            $age = $b_year > 1900 ? max(1, (int) gmdate('Y') - $b_year) : 16;
 
             $new_bene = array(
                 'name' => $name,
@@ -811,7 +811,7 @@ class PJB_REST_API {
         }
 
         $course = PJB_Database::get_course_by_id($cls['courseId']);
-        $protocol = 'MAT-' . date('Y') . '-' . ($cls['code'] ?: 'PJB') . '-' . strtoupper(substr(wp_generate_password(6, false), 0, 5));
+        $protocol = 'MAT-' . gmdate('Y') . '-' . ($cls['code'] ?: 'PJB') . '-' . strtoupper(substr(wp_generate_password(6, false), 0, 5));
 
         $phone_clean = preg_replace('/\D/', '', $target_student['phone'] ?: ($params['phone'] ?? ''));
         $whats_msg = "Olá, " . $target_student['name'] . "! 👋 Sua matrícula no curso *" . ($course['name'] ?? $cls['courseName']) . "* (Turma: " . $cls['code'] . ") foi confirmada com sucesso pelo Projeto Brasil dos Jovens.\n\n📋 *Protocolo:* " . $protocol . "\n⏰ *Horário:* " . $cls['schedule'] . "\n📍 *Local:* " . ($cls['room'] ?: 'Sede PJB Castanhal') . "\n📅 *Início:* " . $cls['startDate'] . "\n\nGuarde este comprovante e nos vemos na aula!";
@@ -1551,7 +1551,7 @@ class PJB_REST_API {
         }
 
         $timestamp = strtotime($date);
-        $day_of_week = intval(date('w', $timestamp)); // 0=Dom, 1=Seg, ..., 6=Sab
+        $day_of_week = intval(gmdate('w', $timestamp)); // 0=Dom, 1=Seg, ..., 6=Sab
 
         $all_slots = array('08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00');
         $prof = null;
@@ -1697,7 +1697,7 @@ class PJB_REST_API {
             $created_ben = PJB_Database::create_beneficiary(array(
                 'name'         => $name,
                 'cpf'          => $clean_cpf,
-                'birthDate'    => sanitize_text_field($beneficiary_input['birthDate'] ?? date('Y-m-d')),
+                'birthDate'    => sanitize_text_field($beneficiary_input['birthDate'] ?? gmdate('Y-m-d')),
                 'phone'        => sanitize_text_field($beneficiary_input['phone'] ?? ''),
                 'email'        => sanitize_email($beneficiary_input['email'] ?? ''),
                 'neighborhood' => sanitize_text_field($beneficiary_input['neighborhood'] ?? 'Castanhal'),

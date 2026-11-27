@@ -58,7 +58,7 @@ class PJB_Admin {
 
         if (!empty($js_files)) {
             $js_url = PJB_PLUGIN_URL . 'build/assets/' . basename($js_files[0]);
-            wp_enqueue_script('pjb-react-js', $js_url, array(), filemtime($js_files[0]), true);
+            wp_enqueue_script('pjb-react-js', $js_url, array('react', 'react-dom'), filemtime($js_files[0]), true);
 
             // Injeta configurações, Nonce de segurança e usuário autenticado
             $current_user = wp_get_current_user();
@@ -139,11 +139,11 @@ class PJB_Admin {
 
         // 1. Ação: Criar Novo Usuário na Equipe
         if (isset($_POST['pjb_action_create_user']) && check_admin_referer('pjb_create_user_action', 'pjb_create_user_nonce')) {
-            $username = sanitize_user($_POST['user_login'] ?? '');
-            $email = sanitize_email($_POST['user_email'] ?? '');
-            $name = sanitize_text_field($_POST['display_name'] ?? '');
-            $password = $_POST['user_pass'] ?? '';
-            $role = sanitize_text_field($_POST['role'] ?? 'pjb_social');
+            $username = sanitize_user(wp_unslash($_POST['user_login'] ?? ''));
+            $email = sanitize_email(wp_unslash($_POST['user_email'] ?? ''));
+            $name = sanitize_text_field(wp_unslash($_POST['display_name'] ?? ''));
+            $password = wp_unslash($_POST['user_pass'] ?? '');
+            $role = sanitize_text_field(wp_unslash($_POST['role'] ?? 'pjb_social'));
 
             if (empty($username) || empty($email) || empty($password)) {
                 $feedback = array('type' => 'error', 'message' => 'Usuário, e-mail e senha são obrigatórios.');
@@ -168,8 +168,8 @@ class PJB_Admin {
 
         // 2. Ação: Alterar Função de um Usuário
         if (isset($_POST['pjb_action_update_role']) && check_admin_referer('pjb_update_role_action', 'pjb_update_role_nonce')) {
-            $user_id = (int) ($_POST['user_id'] ?? 0);
-            $new_role = sanitize_text_field($_POST['new_role'] ?? '');
+            $user_id = absint(wp_unslash($_POST['user_id'] ?? 0));
+            $new_role = sanitize_text_field(wp_unslash($_POST['new_role'] ?? ''));
             if ($user_id > 0 && in_array($new_role, array('pjb_admin', 'pjb_social', 'pjb_instructor', 'administrator'))) {
                 $user = new WP_User($user_id);
                 $user->set_role($new_role);
@@ -179,8 +179,8 @@ class PJB_Admin {
 
         // 3. Ação: Salvar Chave da IA (Gemini) e Modelo
         if (isset($_POST['pjb_action_save_ai']) && check_admin_referer('pjb_save_ai_action', 'pjb_save_ai_nonce')) {
-            $key = sanitize_text_field($_POST['pjb_gemini_api_key'] ?? '');
-            $model = sanitize_text_field($_POST['pjb_gemini_model'] ?? 'gemini-2.5-flash');
+            $key = sanitize_text_field(wp_unslash($_POST['pjb_gemini_api_key'] ?? ''));
+            $model = sanitize_text_field(wp_unslash($_POST['pjb_gemini_model'] ?? 'gemini-2.5-flash'));
             update_option('pjb_gemini_api_key', $key);
             update_option('pjb_gemini_model', $model);
             $feedback = array('type' => 'success', 'message' => 'Configurações de Inteligência Artificial salvas com sucesso.');
@@ -221,23 +221,23 @@ class PJB_Admin {
 
         // 5. Ação: Salvar Integrações (WhatsApp & Gateways)
         if (isset($_POST['pjb_action_save_integrations']) && check_admin_referer('pjb_save_integrations_action', 'pjb_save_integrations_nonce')) {
-            update_option('pjb_whatsapp_provider', sanitize_text_field($_POST['pjb_whatsapp_provider'] ?? 'direct'));
-            update_option('pjb_whatsapp_api_url', sanitize_text_field($_POST['pjb_whatsapp_api_url'] ?? ''));
-            update_option('pjb_whatsapp_api_token', sanitize_text_field($_POST['pjb_whatsapp_api_token'] ?? ''));
-            update_option('pjb_whatsapp_instance', sanitize_text_field($_POST['pjb_whatsapp_instance'] ?? ''));
+            update_option('pjb_whatsapp_provider', sanitize_text_field(wp_unslash($_POST['pjb_whatsapp_provider'] ?? 'direct')));
+            update_option('pjb_whatsapp_api_url', sanitize_text_field(wp_unslash($_POST['pjb_whatsapp_api_url'] ?? '')));
+            update_option('pjb_whatsapp_api_token', sanitize_text_field(wp_unslash($_POST['pjb_whatsapp_api_token'] ?? '')));
+            update_option('pjb_whatsapp_instance', sanitize_text_field(wp_unslash($_POST['pjb_whatsapp_instance'] ?? '')));
             $feedback = array('type' => 'success', 'message' => 'Configurações de integração e mensageria atualizadas com sucesso.');
         }
 
         // 6. Ação: Salvar Dados Institucionais do Polo
         if (isset($_POST['pjb_action_save_institution']) && check_admin_referer('pjb_save_institution_action', 'pjb_save_institution_nonce')) {
-            update_option('pjb_inst_name', sanitize_text_field($_POST['pjb_inst_name'] ?? 'Projeto Brasil dos Jovens'));
-            update_option('pjb_inst_unit', sanitize_text_field($_POST['pjb_inst_unit'] ?? 'Polo Regional Castanhal / PA'));
-            update_option('pjb_inst_cnpj', sanitize_text_field($_POST['pjb_inst_cnpj'] ?? ''));
-            update_option('pjb_inst_phone', sanitize_text_field($_POST['pjb_inst_phone'] ?? ''));
-            update_option('pjb_inst_address', sanitize_text_field($_POST['pjb_inst_address'] ?? 'Castanhal - PA'));
-            update_option('pjb_cert_signer_name', sanitize_text_field($_POST['pjb_cert_signer_name'] ?? 'Coordenação Geral PJB'));
-            update_option('pjb_cert_signer_role', sanitize_text_field($_POST['pjb_cert_signer_role'] ?? 'Diretoria Executiva'));
-            update_option('pjb_custom_validation_url', esc_url_raw($_POST['pjb_custom_validation_url'] ?? ''));
+            update_option('pjb_inst_name', sanitize_text_field(wp_unslash($_POST['pjb_inst_name'] ?? 'Projeto Brasil dos Jovens')));
+            update_option('pjb_inst_unit', sanitize_text_field(wp_unslash($_POST['pjb_inst_unit'] ?? 'Polo Regional Castanhal / PA')));
+            update_option('pjb_inst_cnpj', sanitize_text_field(wp_unslash($_POST['pjb_inst_cnpj'] ?? '')));
+            update_option('pjb_inst_phone', sanitize_text_field(wp_unslash($_POST['pjb_inst_phone'] ?? '')));
+            update_option('pjb_inst_address', sanitize_text_field(wp_unslash($_POST['pjb_inst_address'] ?? 'Castanhal - PA')));
+            update_option('pjb_cert_signer_name', sanitize_text_field(wp_unslash($_POST['pjb_cert_signer_name'] ?? 'Coordenação Geral PJB')));
+            update_option('pjb_cert_signer_role', sanitize_text_field(wp_unslash($_POST['pjb_cert_signer_role'] ?? 'Diretoria Executiva')));
+            update_option('pjb_custom_validation_url', esc_url_raw(wp_unslash($_POST['pjb_custom_validation_url'] ?? '')));
             $feedback = array('type' => 'success', 'message' => 'Dados institucionais, validação de QR Code e certificados salvos com sucesso.');
         }
 
@@ -261,7 +261,7 @@ class PJB_Admin {
 
         // 8. Ação: Importar Backup do Banco de Dados (Upload de Arquivo JSON)
         if (isset($_POST['pjb_action_import_backup']) && check_admin_referer('pjb_import_backup_action', 'pjb_import_backup_nonce')) {
-            $mode = sanitize_text_field($_POST['import_mode'] ?? 'merge');
+            $mode = sanitize_text_field(wp_unslash($_POST['import_mode'] ?? 'merge'));
             if (empty($_FILES['backup_file']['tmp_name'])) {
                 $feedback = array('type' => 'error', 'message' => 'Por favor, selecione um arquivo JSON de backup para importar.');
             } else {

@@ -124,17 +124,17 @@ foreach ($team_users as $u) {
             </div>
             <div style="background: #fff; padding: 18px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
                 <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Coordenação Geral</span>
-                <div style="font-size: 26px; font-weight: 800; color: #2563eb; margin-top: 4px;"><?php echo $count_admin; ?></div>
+                <div style="font-size: 26px; font-weight: 800; color: #2563eb; margin-top: 4px;"><?php echo absint($count_admin); ?></div>
                 <span style="font-size: 11px; color: #64748b;">Acesso Total</span>
             </div>
             <div style="background: #fff; padding: 18px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
                 <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Assistentes Sociais</span>
-                <div style="font-size: 26px; font-weight: 800; color: #9333ea; margin-top: 4px;"><?php echo $count_social; ?></div>
+                <div style="font-size: 26px; font-weight: 800; color: #9333ea; margin-top: 4px;"><?php echo absint($count_social); ?></div>
                 <span style="font-size: 11px; color: #64748b;">Prontuário & Doações</span>
             </div>
             <div style="background: #fff; padding: 18px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
                 <span style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Instrutores / Professores</span>
-                <div style="font-size: 26px; font-weight: 800; color: #059669; margin-top: 4px;"><?php echo $count_instructor; ?></div>
+                <div style="font-size: 26px; font-weight: 800; color: #059669; margin-top: 4px;"><?php echo absint($count_instructor); ?></div>
                 <span style="font-size: 11px; color: #64748b;">Frequência & Turmas</span>
             </div>
         </div>

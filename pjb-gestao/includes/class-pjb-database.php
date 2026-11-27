@@ -50,8 +50,8 @@ class PJB_Database {
         global $wpdb;
         $table = $wpdb->prefix . 'pjb_beneficiaries';
 
-        $where = array('1=1');
-        $params = array();
+        $where = array('1=%d');
+        $params = array(1);
 
         if (!empty($filters['query'])) {
             $like = '%' . $wpdb->esc_like(trim($filters['query'])) . '%';
@@ -76,10 +76,7 @@ class PJB_Database {
             $params[] = $filters['status'];
         }
 
-        $sql = "SELECT * FROM $table WHERE " . implode(' AND ', $where) . " ORDER BY registration_date DESC";
-        if (!empty($params)) {
-            $sql = $wpdb->prepare($sql, $params);
-        }
+        $sql = $wpdb->prepare("SELECT * FROM $table WHERE " . implode(' AND ', $where) . " ORDER BY registration_date DESC", $params);
 
         $results = $wpdb->get_results($sql, ARRAY_A);
         return array_map(array(__CLASS__, 'format_beneficiary'), $results ?: array());
@@ -613,8 +610,8 @@ class PJB_Database {
         }
 
         $id = 'crt_' . wp_generate_uuid4();
-        $code = 'PJB-' . date('Y') . '-' . strtoupper(substr(wp_generate_password(8, false), 0, 8));
-        $issue_date = date('Y-m-d');
+        $code = 'PJB-' . gmdate('Y') . '-' . strtoupper(substr(wp_generate_password(8, false), 0, 8));
+        $issue_date = gmdate('Y-m-d');
 
         $sig = PJB_Crypto::generate_signature(array(
             'code' => $code,
@@ -735,7 +732,7 @@ class PJB_Database {
         $table = $wpdb->prefix . 'pjb_donations';
 
         $id = !empty($data['id']) ? $data['id'] : 'don_' . wp_generate_uuid4();
-        $receipt = 'REC-' . date('Y') . '-' . strtoupper(substr(wp_generate_password(6, false), 0, 6));
+        $receipt = 'REC-' . gmdate('Y') . '-' . strtoupper(substr(wp_generate_password(6, false), 0, 6));
 
         $record = array(
             'id' => $id,
@@ -749,7 +746,7 @@ class PJB_Database {
             'beneficiary_id' => sanitize_text_field($data['beneficiaryId'] ?? ''),
             'beneficiary_name' => sanitize_text_field($data['beneficiaryName'] ?? ''),
             'campaign_id' => sanitize_text_field($data['campaignId'] ?? ''),
-            'date' => sanitize_text_field($data['date'] ?? date('Y-m-d')),
+            'date' => sanitize_text_field($data['date'] ?? gmdate('Y-m-d')),
             'registered_by' => sanitize_text_field($data['registeredBy'] ?? 'Equipe PJB'),
             'notes' => sanitize_textarea_field($data['notes'] ?? ''),
         );
@@ -774,16 +771,13 @@ class PJB_Database {
         global $wpdb;
         $table_c = $wpdb->prefix . 'pjb_campaigns';
         $table_d = $wpdb->prefix . 'pjb_donations';
-        $rows = $wpdb->get_results("
-            SELECT c.*, 
-                   COALESCE((
-                       SELECT SUM(d.quantity) 
-                       FROM $table_d d 
-                       WHERE d.campaign_id = c.id AND d.type = 'entrada'
-                   ), 0) AS current_progress
-            FROM $table_c c 
-            ORDER BY c.start_date DESC
-        ", ARRAY_A);
+        $rows = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT c.*, COALESCE((SELECT SUM(d.quantity) FROM $table_d d WHERE d.campaign_id = c.id AND d.type = %s), 0) AS current_progress FROM $table_c c ORDER BY c.start_date DESC",
+                'entrada'
+            ),
+            ARRAY_A
+        );
 
         return array_map(function ($r) {
             $tags = array();
@@ -837,8 +831,8 @@ class PJB_Database {
             'category' => sanitize_text_field($data['category'] ?? 'Alimentação'),
             'target_goal' => (float) $data['targetGoal'],
             'unit' => sanitize_text_field($data['unit'] ?? 'Unidades'),
-            'start_date' => sanitize_text_field($data['startDate'] ?? date('Y-m-d')),
-            'end_date' => sanitize_text_field($data['endDate'] ?? date('Y-m-d', strtotime('+30 days'))),
+            'start_date' => sanitize_text_field($data['startDate'] ?? gmdate('Y-m-d')),
+            'end_date' => sanitize_text_field($data['endDate'] ?? gmdate('Y-m-d', strtotime('+30 days'))),
             'location' => sanitize_text_field($data['location'] ?? 'Sede PJB Castanhal'),
             'status' => sanitize_text_field($data['status'] ?? 'em_andamento'),
             'tags' => $tags_json,
@@ -928,8 +922,8 @@ class PJB_Database {
         $table_p = $wpdb->prefix . 'pjb_cultural_participants';
         $table_s = $wpdb->prefix . 'pjb_cultural_supporters';
 
-        $where = array('1=1');
-        $params = array();
+        $where = array('1=%d');
+        $params = array(1);
 
         if (!empty($filters['type']) && $filters['type'] !== 'todos') {
             $where[] = "type = %s";
@@ -944,10 +938,7 @@ class PJB_Database {
             $params[] = $filters['modality'];
         }
 
-        $sql = "SELECT * FROM $table_a WHERE " . implode(' AND ', $where) . " ORDER BY start_date DESC";
-        if (!empty($params)) {
-            $sql = $wpdb->prepare($sql, $params);
-        }
+        $sql = $wpdb->prepare("SELECT * FROM $table_a WHERE " . implode(' AND ', $where) . " ORDER BY start_date DESC", $params);
 
         $rows = $wpdb->get_results($sql, ARRAY_A);
         if (!$rows) return array();
@@ -1058,7 +1049,7 @@ class PJB_Database {
             'target_age_max' => isset($data['targetAgeMax']) ? (int) $data['targetAgeMax'] : 29,
             'location' => sanitize_text_field($data['location'] ?? 'Sede PJB Castanhal'),
             'schedule' => sanitize_text_field($data['schedule'] ?? 'Horário regular'),
-            'start_date' => sanitize_text_field($data['startDate'] ?? date('Y-m-d')),
+            'start_date' => sanitize_text_field($data['startDate'] ?? gmdate('Y-m-d')),
             'end_date' => !empty($data['endDate']) ? sanitize_text_field($data['endDate']) : null,
             'status' => sanitize_text_field($data['status'] ?? 'planejado'),
             'max_participants' => isset($data['maxParticipants']) ? (int) $data['maxParticipants'] : 30,
@@ -1139,7 +1130,7 @@ class PJB_Database {
             'status' => sanitize_text_field($data['status'] ?? 'confirmado'),
             'achievement' => !empty($data['achievement']) ? sanitize_text_field($data['achievement']) : null,
             'notes' => !empty($data['notes']) ? sanitize_textarea_field($data['notes']) : null,
-            'registration_date' => sanitize_text_field($data['registrationDate'] ?? date('Y-m-d')),
+            'registration_date' => sanitize_text_field($data['registrationDate'] ?? gmdate('Y-m-d')),
         );
 
         $wpdb->insert($table, $record);
@@ -1245,8 +1236,8 @@ class PJB_Database {
     public static function get_attendance_professionals($filters = array()) {
         global $wpdb;
         $table = $wpdb->prefix . 'pjb_attendance_professionals';
-        $where = array('1=1');
-        $params = array();
+        $where = array('1=%d');
+        $params = array(1);
 
         if (!empty($filters['area']) && $filters['area'] !== 'todas' && $filters['area'] !== 'todos') {
             $where[] = "area = %s";
@@ -1257,10 +1248,7 @@ class PJB_Database {
             $params[] = $filters['active'] ? 1 : 0;
         }
 
-        $sql = "SELECT * FROM $table WHERE " . implode(' AND ', $where) . " ORDER BY name ASC";
-        if (!empty($params)) {
-            $sql = $wpdb->prepare($sql, $params);
-        }
+        $sql = $wpdb->prepare("SELECT * FROM $table WHERE " . implode(' AND ', $where) . " ORDER BY name ASC", $params);
 
         $rows = $wpdb->get_results($sql, ARRAY_A);
         if (!$rows) return array();
@@ -1394,8 +1382,8 @@ class PJB_Database {
     public static function get_attendances($filters = array()) {
         global $wpdb;
         $table = $wpdb->prefix . 'pjb_service_attendances';
-        $where = array('1=1');
-        $params = array();
+        $where = array('1=%d');
+        $params = array(1);
 
         if (!empty($filters['area']) && $filters['area'] !== 'todas' && $filters['area'] !== 'todos') {
             $where[] = "area = %s";
@@ -1422,10 +1410,7 @@ class PJB_Database {
             $params[] = $search_like;
         }
 
-        $sql = "SELECT * FROM $table WHERE " . implode(' AND ', $where) . " ORDER BY date DESC, created_at DESC";
-        if (!empty($params)) {
-            $sql = $wpdb->prepare($sql, $params);
-        }
+        $sql = $wpdb->prepare("SELECT * FROM $table WHERE " . implode(' AND ', $where) . " ORDER BY date DESC, created_at DESC", $params);
 
         $rows = $wpdb->get_results($sql, ARRAY_A);
         if (!$rows) return array();
@@ -1449,7 +1434,7 @@ class PJB_Database {
         $protocol = !empty($data['protocolNumber']) ? $data['protocolNumber'] : null;
         if (!$protocol) {
             $prefix = (isset($data['area']) && $data['area'] === 'juridico') ? 'PJB-JUR' : 'PJB-SAU';
-            $year = date('Y');
+            $year = gmdate('Y');
             $count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $table") + 1;
             $protocol = sprintf("%s-%s-%04d", $prefix, $year, $count);
         }
@@ -1469,7 +1454,7 @@ class PJB_Database {
             'professional_id' => !empty($data['professionalId']) ? sanitize_text_field($data['professionalId']) : null,
             'professional_name' => sanitize_text_field($data['professionalName']),
             'professional_registration' => !empty($data['professionalRegistration']) ? sanitize_text_field($data['professionalRegistration']) : null,
-            'date' => sanitize_text_field($data['date'] ?? date('Y-m-d')),
+            'date' => sanitize_text_field($data['date'] ?? gmdate('Y-m-d')),
             'time' => !empty($data['time']) ? sanitize_text_field($data['time']) : null,
             'location' => sanitize_text_field($data['location'] ?? 'Sede PJB Castanhal'),
             'status' => sanitize_text_field($data['status'] ?? 'agendado'),
@@ -1822,7 +1807,7 @@ class PJB_Database {
                     'name' => sanitize_text_field($b['name']),
                     'cpf' => sanitize_text_field($b['cpf']),
                     'rg' => sanitize_text_field($b['rg'] ?? ''),
-                    'birth_date' => sanitize_text_field($b['birthDate'] ?? ($b['birth_date'] ?? date('Y-m-d'))),
+                    'birth_date' => sanitize_text_field($b['birthDate'] ?? ($b['birth_date'] ?? gmdate('Y-m-d'))),
                     'age' => (int) ($b['age'] ?? 0),
                     'gender' => sanitize_text_field($b['gender'] ?? 'Não informado'),
                     'phone' => sanitize_text_field($b['phone'] ?? ''),
@@ -1844,7 +1829,7 @@ class PJB_Database {
                     'public_school_name' => sanitize_text_field($b['publicSchoolName'] ?? ($b['public_school_name'] ?? '')),
                     'vulnerability_level' => sanitize_text_field($b['vulnerabilityLevel'] ?? ($b['vulnerability_level'] ?? 'media')),
                     'notes' => sanitize_textarea_field($b['notes'] ?? ''),
-                    'registration_date' => sanitize_text_field($b['registrationDate'] ?? ($b['registration_date'] ?? date('Y-m-d'))),
+                    'registration_date' => sanitize_text_field($b['registrationDate'] ?? ($b['registration_date'] ?? gmdate('Y-m-d'))),
                     'status' => sanitize_text_field($b['status'] ?? 'ativo'),
                 );
 
@@ -1903,8 +1888,8 @@ class PJB_Database {
                     'code' => sanitize_text_field($cls['code'] ?? 'TURMA-' . substr($id, -4)),
                     'schedule' => sanitize_text_field($cls['schedule'] ?? 'Turno Regular'),
                     'room' => sanitize_text_field($cls['room'] ?? 'Sala PJB Castanhal'),
-                    'start_date' => sanitize_text_field($cls['startDate'] ?? ($cls['start_date'] ?? date('Y-m-d'))),
-                    'end_date' => sanitize_text_field($cls['endDate'] ?? ($cls['end_date'] ?? date('Y-m-d', strtotime('+60 days')))),
+                    'start_date' => sanitize_text_field($cls['startDate'] ?? ($cls['start_date'] ?? gmdate('Y-m-d'))),
+                    'end_date' => sanitize_text_field($cls['endDate'] ?? ($cls['end_date'] ?? gmdate('Y-m-d', strtotime('+60 days')))),
                     'max_students' => (int) ($cls['maxStudents'] ?? ($cls['max_students'] ?? 25)),
                     'enrolled_students' => is_string($enrolled) ? $enrolled : wp_json_encode($enrolled),
                     'status' => sanitize_text_field($cls['status'] ?? 'ativa'),
@@ -1924,7 +1909,7 @@ class PJB_Database {
         if (!empty($dataset['attendances']) && is_array($dataset['attendances'])) {
             foreach ($dataset['attendances'] as $att) {
                 $classId = $att['classId'] ?? ($att['class_id'] ?? '');
-                $date = $att['date'] ?? date('Y-m-d');
+                $date = $att['date'] ?? gmdate('Y-m-d');
                 if (empty($classId)) continue;
                 $id = !empty($att['id']) ? $att['id'] : 'att_' . wp_generate_uuid4();
                 $records = isset($att['records'])
@@ -1965,7 +1950,7 @@ class PJB_Database {
                     'course_id' => sanitize_text_field($cert['courseId'] ?? ($cert['course_id'] ?? '')),
                     'course_name' => sanitize_text_field($cert['courseName'] ?? ($cert['course_name'] ?? '')),
                     'workload_hours' => (int) ($cert['workloadHours'] ?? ($cert['workload_hours'] ?? 40)),
-                    'issue_date' => sanitize_text_field($cert['issueDate'] ?? ($cert['issue_date'] ?? date('Y-m-d'))),
+                    'issue_date' => sanitize_text_field($cert['issueDate'] ?? ($cert['issue_date'] ?? gmdate('Y-m-d'))),
                     'verification_hash' => sanitize_text_field($cert['verificationHash'] ?? ($cert['verification_hash'] ?? '')),
                     'status' => sanitize_text_field($cert['status'] ?? 'valido'),
                     'qr_code_url' => esc_url_raw($cert['qrCodeUrl'] ?? ($cert['qr_code_url'] ?? '')),
@@ -1994,8 +1979,8 @@ class PJB_Database {
                     'category' => sanitize_text_field($cmp['category'] ?? 'Alimentação'),
                     'target_goal' => (float) ($cmp['targetGoal'] ?? ($cmp['target_goal'] ?? 100)),
                     'unit' => sanitize_text_field($cmp['unit'] ?? 'Unidades'),
-                    'start_date' => sanitize_text_field($cmp['startDate'] ?? ($cmp['start_date'] ?? date('Y-m-d'))),
-                    'end_date' => sanitize_text_field($cmp['endDate'] ?? ($cmp['end_date'] ?? date('Y-m-d', strtotime('+30 days')))),
+                    'start_date' => sanitize_text_field($cmp['startDate'] ?? ($cmp['start_date'] ?? gmdate('Y-m-d'))),
+                    'end_date' => sanitize_text_field($cmp['endDate'] ?? ($cmp['end_date'] ?? gmdate('Y-m-d', strtotime('+30 days')))),
                     'location' => sanitize_text_field($cmp['location'] ?? 'Sede PJB Castanhal'),
                     'status' => sanitize_text_field($cmp['status'] ?? 'em_andamento'),
                 );
@@ -2025,7 +2010,7 @@ class PJB_Database {
                     'unit' => sanitize_text_field($don['unit'] ?? 'Cestas'),
                     'beneficiary_id' => sanitize_text_field($don['beneficiaryId'] ?? ($don['beneficiary_id'] ?? '')),
                     'beneficiary_name' => sanitize_text_field($don['beneficiaryName'] ?? ($don['beneficiary_name'] ?? '')),
-                    'date' => sanitize_text_field($don['date'] ?? date('Y-m-d')),
+                    'date' => sanitize_text_field($don['date'] ?? gmdate('Y-m-d')),
                     'donor_name' => sanitize_text_field($don['donorName'] ?? ($don['donor_name'] ?? '')),
                     'receipt_number' => sanitize_text_field($don['receiptNumber'] ?? ($don['receipt_number'] ?? 'REC-' . substr($id, -6))),
                     'status' => sanitize_text_field($don['status'] ?? 'concluido'),
@@ -2115,8 +2100,8 @@ class PJB_Database {
         global $wpdb;
         $table = $wpdb->prefix . 'pjb_financial_transactions';
 
-        $where = array('1=1');
-        $params = array();
+        $where = array('1=%d');
+        $params = array(1);
 
         if (!empty($filters['type']) && $filters['type'] !== 'todos') {
             $where[] = 'type = %s';
@@ -2143,10 +2128,7 @@ class PJB_Database {
             $params[] = $like;
         }
 
-        $sql = "SELECT * FROM $table WHERE " . implode(' AND ', $where) . " ORDER BY date DESC, created_at DESC";
-        if (!empty($params)) {
-            $sql = $wpdb->prepare($sql, $params);
-        }
+        $sql = $wpdb->prepare("SELECT * FROM $table WHERE " . implode(' AND ', $where) . " ORDER BY date DESC, created_at DESC", $params);
 
         $rows = $wpdb->get_results($sql, ARRAY_A);
         return array_map(array(__CLASS__, 'format_financial_transaction'), $rows ?: array());
@@ -2169,7 +2151,7 @@ class PJB_Database {
         if (!$receipt) {
             $type = $data['type'] ?? 'receita';
             $prefix = ($type === 'receita') ? 'REC' : 'DESP';
-            $year = date('Y');
+            $year = gmdate('Y');
             $count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $table") + 1;
             $receipt = sprintf("%s-%s-%04d", $prefix, $year, $count);
         }
@@ -2180,7 +2162,7 @@ class PJB_Database {
             'category' => sanitize_text_field($data['category'] ?? 'Geral'),
             'description' => sanitize_text_field($data['description'] ?? ''),
             'amount' => (float) ($data['amount'] ?? 0),
-            'date' => sanitize_text_field($data['date'] ?? date('Y-m-d')),
+            'date' => sanitize_text_field($data['date'] ?? gmdate('Y-m-d')),
             'payment_method' => sanitize_text_field($data['paymentMethod'] ?? 'pix'),
             'donor_or_supplier' => sanitize_text_field($data['donorOrSupplier'] ?? 'Anônimo'),
             'document_number' => !empty($data['documentNumber']) ? sanitize_text_field($data['documentNumber']) : null,
@@ -2253,7 +2235,7 @@ class PJB_Database {
         $totalDespesas = (float) $wpdb->get_var("SELECT COALESCE(SUM(amount), 0) FROM $table WHERE type = 'despesa' AND status = 'confirmado'");
         $saldoGeral = $totalReceitas - $totalDespesas;
 
-        $currentMonth = date('Y-m');
+        $currentMonth = gmdate('Y-m');
         $receitasMes = (float) $wpdb->get_var($wpdb->prepare("SELECT COALESCE(SUM(amount), 0) FROM $table WHERE type = 'receita' AND status = 'confirmado' AND date LIKE %s", $currentMonth . '%'));
         $despesasMes = (float) $wpdb->get_var($wpdb->prepare("SELECT COALESCE(SUM(amount), 0) FROM $table WHERE type = 'despesa' AND status = 'confirmado' AND date LIKE %s", $currentMonth . '%'));
         $saldoMes = $receitasMes - $despesasMes;
