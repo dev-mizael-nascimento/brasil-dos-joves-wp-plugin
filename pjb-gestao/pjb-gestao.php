@@ -3,7 +3,7 @@
  * Plugin Name:       Projeto Brasil dos Jovens (PJB) - Gestão Social & Acadêmica
  * Plugin URI:        https://brasildosjovens.org.br
  * Description:       Sistema completo de gestão social, qualificação profissional, controle de turmas, frequência, emissão de certificados oficiais com QR Code e captação de recursos com IA para o Projeto Brasil dos Jovens (PJB).
- * Version:           1.0.0
+ * Version:           1.2.0
  * Author:            Projeto Brasil dos Jovens & Castanhal-PA
  * Author URI:        https://instagram.com/brasildosjovens
  * License:           GPL-2.0+
@@ -18,8 +18,8 @@ if (!defined('ABSPATH')) {
 }
 
 // Constantes globais do plugin
-define('PJB_VERSION', '1.0.0');
-define('PJB_DB_VERSION', '1.0.0');
+define('PJB_VERSION', '1.2.0');
+define('PJB_DB_VERSION', '1.2.0');
 define('PJB_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('PJB_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('PJB_PLUGIN_BASENAME', plugin_basename(__FILE__));

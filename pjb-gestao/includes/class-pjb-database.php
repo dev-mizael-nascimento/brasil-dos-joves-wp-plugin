@@ -95,7 +95,15 @@ class PJB_Database {
     public static function get_beneficiary_by_cpf($cpf) {
         global $wpdb;
         $table = $wpdb->prefix . 'pjb_beneficiaries';
-        $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE cpf = %s", $cpf), ARRAY_A);
+        $clean = preg_replace('/\D/', '', $cpf);
+        $row = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT * FROM $table WHERE REPLACE(REPLACE(REPLACE(cpf, '.', ''), '-', ''), ' ', '') = %s OR cpf = %s LIMIT 1",
+                $clean,
+                $cpf
+            ),
+            ARRAY_A
+        );
         return self::format_beneficiary($row);
     }
 

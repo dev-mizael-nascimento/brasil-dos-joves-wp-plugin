@@ -16,6 +16,13 @@ class PJB_REST_API {
     }
 
     public static function register_routes() {
+        // Autenticação Nativa WordPress (Área Restrita)
+        register_rest_route(self::NAMESPACE, '/auth/login', array(
+            'methods' => 'POST',
+            'callback' => array(__CLASS__, 'auth_login'),
+            'permission_callback' => '__return_true',
+        ));
+
         // Estatísticas do Painel
         register_rest_route(self::NAMESPACE, '/stats', array(
             'methods' => 'GET',
@@ -1519,15 +1526,19 @@ class PJB_REST_API {
             'success' => true,
             'found'   => true,
             'data'    => array(
-                'id'           => $beneficiary['id'],
-                'name'         => $beneficiary['name'],
-                'cpf'          => $beneficiary['cpf'],
-                'birthDate'    => $beneficiary['birthDate'] ?? '',
-                'phone'        => $beneficiary['phone'] ?? '',
-                'email'        => $beneficiary['email'] ?? '',
-                'neighborhood' => $beneficiary['neighborhood'] ?? '',
-                'address'      => $beneficiary['address'] ?? '',
-                'city'         => $beneficiary['city'] ?? '',
+                'id'               => $beneficiary['id'],
+                'name'             => $beneficiary['name'],
+                'cpf'              => $beneficiary['cpf'],
+                'birthDate'        => $beneficiary['birthDate'] ?? '',
+                'phone'            => $beneficiary['phone'] ?? '',
+                'email'            => $beneficiary['email'] ?? '',
+                'neighborhood'     => $beneficiary['address']['neighborhood'] ?? '',
+                'address'          => $beneficiary['address']['street'] ?? '',
+                'city'             => $beneficiary['address']['city'] ?? 'Castanhal',
+                'schoolingStatus'  => $beneficiary['schoolingStatus'] ?? '',
+                'publicSchoolName' => $beneficiary['publicSchoolName'] ?? '',
+                'guardianName'     => $beneficiary['guardianName'] ?? '',
+                'guardianPhone'    => $beneficiary['guardianPhone'] ?? '',
             ),
         ));
     }
@@ -1736,6 +1747,42 @@ class PJB_REST_API {
             'message'        => 'Agendamento confirmado com sucesso!',
             'data'           => $created_attendance,
             'protocolNumber' => $created_attendance['protocolNumber'] ?? '',
+        ));
+    }
+
+    public static function auth_login($request) {
+        $params = $request->get_json_params() ?: $request->get_params();
+        $login = sanitize_text_field($params['email'] ?? ($params['username'] ?? ''));
+        $password = $params['password'] ?? '';
+
+        if (empty($login) || empty($password)) {
+            return new WP_Error('missing_credentials', 'Informe seu e-mail/usuário e senha.', array('status' => 400));
+        }
+
+        $user = wp_authenticate($login, $password);
+        if (is_wp_error($user)) {
+            return new WP_Error('invalid_credentials', 'Credenciais inválidas no WordPress.', array('status' => 401));
+        }
+
+        wp_set_current_user($user->ID);
+        wp_set_auth_cookie($user->ID, true);
+
+        $role = 'admin';
+        if (in_array('pjb_social', $user->roles, true)) {
+            $role = 'social';
+        } elseif (in_array('pjb_professor', $user->roles, true)) {
+            $role = 'professor';
+        }
+
+        return rest_ensure_response(array(
+            'success' => true,
+            'token'   => wp_create_nonce('wp_rest'),
+            'user'    => array(
+                'id'    => (string) $user->ID,
+                'name'  => $user->display_name ?: $user->user_login,
+                'email' => $user->user_email,
+                'role'  => $role,
+            ),
         ));
     }
 }

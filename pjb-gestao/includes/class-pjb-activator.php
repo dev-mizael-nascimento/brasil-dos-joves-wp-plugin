@@ -331,10 +331,14 @@ class PJB_Activator {
         // Popula dados semente se o banco estiver limpo
         self::seed_initial_data();
 
-        // Garante colunas de syllabus em bancos existentes
+        // Garante colunas de syllabus e min_schooling em bancos existentes
         $col_course_syl = $wpdb->get_results("SHOW COLUMNS FROM `$table_courses` LIKE 'syllabus'");
         if (empty($col_course_syl)) {
             $wpdb->query("ALTER TABLE `$table_courses` ADD COLUMN `syllabus` text DEFAULT NULL");
+        }
+        $col_course_sch = $wpdb->get_results("SHOW COLUMNS FROM `$table_courses` LIKE 'min_schooling'");
+        if (empty($col_course_sch)) {
+            $wpdb->query("ALTER TABLE `$table_courses` ADD COLUMN `min_schooling` varchar(100) DEFAULT 'Livre'");
         }
         $col_cert_syl = $wpdb->get_results("SHOW COLUMNS FROM `$table_certificates` LIKE 'syllabus'");
         if (empty($col_cert_syl)) {
