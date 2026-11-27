@@ -34,8 +34,6 @@ require_once PJB_PLUGIN_DIR . 'includes/class-pjb-ai-service.php';
 require_once PJB_PLUGIN_DIR . 'includes/class-pjb-rest-api.php';
 require_once PJB_PLUGIN_DIR . 'admin/class-pjb-admin.php';
 require_once PJB_PLUGIN_DIR . 'public/class-pjb-shortcodes.php';
-
-require_once PJB_PLUGIN_DIR . 'includes/class-pjb-updater.php';
 require_once PJB_PLUGIN_DIR . 'includes/class-pjb-smtp.php';
 
 // Hooks de ciclo de vida do WordPress
@@ -53,6 +51,5 @@ add_action('plugins_loaded', function () {
     PJB_Admin::init();
     PJB_Shortcodes::init();
     PJB_REST_API::init();
-    PJB_Updater::init();
     PJB_SMTP::init();
 });

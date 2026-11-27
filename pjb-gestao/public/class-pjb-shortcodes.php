@@ -31,11 +31,12 @@ class PJB_Shortcodes {
         $portal = get_query_var('pjb_portal');
         if (empty($portal)) {
             if (isset($_GET['pjb_portal'])) {
-                $portal = sanitize_text_field($_GET['pjb_portal']);
+                $portal = sanitize_text_field(wp_unslash($_GET['pjb_portal']));
             } elseif (isset($_GET['portal'])) {
-                $portal = sanitize_text_field($_GET['portal']);
+                $portal = sanitize_text_field(wp_unslash($_GET['portal']));
             } else {
-                $uri = trim(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH), '/');
+                $request_uri = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '';
+                $uri = trim((string) wp_parse_url($request_uri, PHP_URL_PATH), '/');
                 if ($uri === 'validar' || preg_match('#(^|/)validar/?$#', $uri)) {
                     $portal = 'validar';
                 } elseif ($uri === 'agendar' || preg_match('#(^|/)agendar/?$#', $uri)) {

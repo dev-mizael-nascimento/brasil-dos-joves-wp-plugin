@@ -289,48 +289,32 @@ class PJB_Admin {
             }
         }
 
-        // 9. Ação: Salvar Token do GitHub
-        if (isset($_POST['pjb_action_save_github']) && check_admin_referer('pjb_save_github_action', 'pjb_save_github_nonce')) {
-            $token = sanitize_text_field($_POST['pjb_github_token'] ?? '');
-            update_option('pjb_github_token', $token);
-            delete_transient('pjb_github_update_info');
-            delete_site_transient('update_plugins');
-            $feedback = array('type' => 'success', 'message' => 'Configurações de integração com GitHub salvas com sucesso.');
-        }
-
-        // 10. Ação: Salvar Configurações de SMTP / E-mail
+        // 9. Ação: Salvar Configurações de SMTP / E-mail
         if (isset($_POST['pjb_action_save_smtp']) && check_admin_referer('pjb_save_smtp_action', 'pjb_save_smtp_nonce')) {
             update_option('pjb_smtp_enabled', isset($_POST['pjb_smtp_enabled']) ? '1' : '0');
-            update_option('pjb_smtp_host', sanitize_text_field($_POST['pjb_smtp_host'] ?? ''));
+            update_option('pjb_smtp_host', sanitize_text_field(wp_unslash($_POST['pjb_smtp_host'] ?? '')));
             update_option('pjb_smtp_port', (int) ($_POST['pjb_smtp_port'] ?? 587));
-            update_option('pjb_smtp_secure', sanitize_text_field($_POST['pjb_smtp_secure'] ?? 'tls'));
+            update_option('pjb_smtp_secure', sanitize_text_field(wp_unslash($_POST['pjb_smtp_secure'] ?? 'tls')));
             update_option('pjb_smtp_auth', isset($_POST['pjb_smtp_auth']) ? '1' : '0');
-            update_option('pjb_smtp_user', sanitize_text_field($_POST['pjb_smtp_user'] ?? ''));
+            update_option('pjb_smtp_user', sanitize_text_field(wp_unslash($_POST['pjb_smtp_user'] ?? '')));
             
             // Só altera a senha caso um novo valor tenha sido digitado
             if (!empty($_POST['pjb_smtp_pass'])) {
-                update_option('pjb_smtp_pass', $_POST['pjb_smtp_pass']);
+                update_option('pjb_smtp_pass', wp_unslash($_POST['pjb_smtp_pass']));
             }
             
-            update_option('pjb_smtp_from_email', sanitize_email($_POST['pjb_smtp_from_email'] ?? ''));
-            update_option('pjb_smtp_from_name', sanitize_text_field($_POST['pjb_smtp_from_name'] ?? ''));
+            update_option('pjb_smtp_from_email', sanitize_email(wp_unslash($_POST['pjb_smtp_from_email'] ?? '')));
+            update_option('pjb_smtp_from_name', sanitize_text_field(wp_unslash($_POST['pjb_smtp_from_name'] ?? '')));
 
             $feedback = array('type' => 'success', 'message' => 'Configurações de Servidor SMTP salvas com sucesso.');
         }
 
-        if (isset($_GET['pjb_git_checked'])) {
-            $feedback = array(
-                'type' => 'success',
-                'message' => '🔄 <strong>Verificação concluída no GitHub!</strong> O cache do WordPress foi renovado. Se houver uma nova versão ou commit, o WordPress exibirá o aviso oficial de atualização na página de Plugins.'
-            );
-        }
-
         if (isset($_GET['smtp_success'])) {
-            $feedback = array('type' => 'success', 'message' => '✅ ' . esc_html(urldecode($_GET['smtp_success'])));
+            $feedback = array('type' => 'success', 'message' => '✅ ' . esc_html(urldecode(sanitize_text_field(wp_unslash($_GET['smtp_success'])))));
         }
 
         if (isset($_GET['smtp_error'])) {
-            $feedback = array('type' => 'error', 'message' => '⚠️ ' . esc_html(urldecode($_GET['smtp_error'])));
+            $feedback = array('type' => 'error', 'message' => '⚠️ ' . esc_html(urldecode(sanitize_text_field(wp_unslash($_GET['smtp_error'])))));
         }
 
         require_once PJB_PLUGIN_DIR . 'admin/views/settings-display.php';

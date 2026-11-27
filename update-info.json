@@ -2,15 +2,15 @@
   "name": "Projeto Brasil dos Jovens (PJB) - Gestão Social & Acadêmica",
   "slug": "pjb-gestao",
   "version": "1.2.0",
-  "last_commit": "ef8fa9f",
-  "last_commit_message": "chore: focar 100% no plugin WordPress e remover backend SaaS duplicado",
-  "last_updated": "2026-11-27 10:50:44",
+  "last_commit": "b4eacb9",
+  "last_commit_message": "fix: revisar integracao React x WordPress PHP e criar DOCUMENTACAO_SISTEMA.md",
+  "last_updated": "2026-11-27 11:05:35",
   "download_url": "https://raw.githubusercontent.com/viebmiza/brasil-dos-joves-wp-plugin/main/pjb-gestao.zip",
   "tested": "6.7",
   "requires": "6.0",
   "requires_php": "7.4",
   "sections": {
     "description": "Sistema completo de gestão social, qualificação profissional, controle de turmas, frequência, emissão de certificados oficiais com QR Code e captação de recursos com IA para o Projeto Brasil dos Jovens (PJB).",
-    "changelog": "Último commit: [ef8fa9f] chore: focar 100% no plugin WordPress e remover backend SaaS duplicado"
+    "changelog": "Último commit: [b4eacb9] fix: revisar integracao React x WordPress PHP e criar DOCUMENTACAO_SISTEMA.md"
   }
 }

@@ -3,7 +3,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-$current_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'users';
+$current_tab = isset($_GET['tab']) ? sanitize_text_field(wp_unslash($_GET['tab'])) : 'users';
 
 // Carrega dados de IA
 $gemini_key = get_option('pjb_gemini_api_key', '');
@@ -25,12 +25,6 @@ $inst_address = get_option('pjb_inst_address', 'Castanhal - PA');
 $cert_signer_name = get_option('pjb_cert_signer_name', 'Coordenação Geral PJB');
 $cert_signer_role = get_option('pjb_cert_signer_role', 'Diretoria Executiva');
 $custom_validation_url = get_option('pjb_custom_validation_url', '');
-
-// Carrega dados de atualização Git
-$github_token = get_option('pjb_github_token', '');
-$installed_version = defined('PJB_VERSION') ? PJB_VERSION : '1.0.0';
-$installed_commit = get_option('pjb_installed_commit', 'fca4986');
-$remote_info = class_exists('PJB_Updater') ? PJB_Updater::fetch_remote_info() : false;
 
 // Carrega configurações de SMTP
 $smtp_enabled   = get_option('pjb_smtp_enabled', '0');
@@ -113,9 +107,6 @@ foreach ($team_users as $u) {
         </a>
         <a href="?page=pjb-settings&tab=shortcodes" class="nav-tab <?php echo $current_tab === 'shortcodes' ? 'nav-tab-active' : ''; ?>" style="font-weight: 600;">
             📋 Shortcodes do Site
-        </a>
-        <a href="?page=pjb-settings&tab=updates" class="nav-tab <?php echo $current_tab === 'updates' ? 'nav-tab-active' : ''; ?>" style="font-weight: 600; color: #2563eb;">
-            🚀 Atualizações Git <?php if ($remote_info && !empty($remote_info->last_commit) && $remote_info->last_commit !== $installed_commit): ?><span style="background: #ef4444; color: #fff; font-size: 10px; padding: 1px 6px; border-radius: 10px; margin-left: 4px;">NOVO</span><?php endif; ?>
         </a>
     </nav>
 
@@ -895,125 +886,6 @@ foreach ($team_users as $u) {
                 <p style="font-size: 13px; color: #475569; margin: 8px 0 0;">
                     Embarca o painel completo de gestão diretamente em uma página interna protegida para operadores do projeto.
                 </p>
-            </div>
-        </div>
-
-    <!-- ======================================================== -->
-    <!-- ABA 7: ATUALIZAÇÕES AUTOMÁTICAS VIA GITHUB (GIT)        -->
-    <!-- ======================================================== -->
-    <?php elseif ($current_tab === 'updates'): ?>
-
-        <div style="background: #fff; padding: 25px; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-            <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 20px;">
-                <div style="width: 48px; height: 48px; border-radius: 12px; background: #eff6ff; display: flex; align-items: center; justify-content: center; font-size: 24px;">
-                    🚀
-                </div>
-                <div>
-                    <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: #0f172a;">Sincronização & Atualizações Automáticas via GitHub</h3>
-                    <p style="margin: 2px 0 0; font-size: 13px; color: #64748b;">
-                        Repositório vinculado: <code>viebmiza/PJB-brasil-dos-joves-</code> (Branch: <code>main</code>)
-                    </p>
-                </div>
-            </div>
-
-            <!-- Painel de Status da Versão -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 25px;">
-                <div style="background: #f8fafc; padding: 16px; border-radius: 10px; border: 1px solid #e2e8f0;">
-                    <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Versão Instalada</div>
-                    <div style="font-size: 20px; font-weight: 800; color: #0f172a; margin-top: 4px;">v<?php echo esc_html($installed_version); ?></div>
-                    <span style="font-size: 11px; color: #64748b;">Commit local: <code><?php echo esc_html(substr($installed_commit, 0, 7)); ?></code></span>
-                </div>
-
-                <div style="background: #f8fafc; padding: 16px; border-radius: 10px; border: 1px solid #e2e8f0;">
-                    <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Última Versão no Git</div>
-                    <div style="font-size: 20px; font-weight: 800; color: #2563eb; margin-top: 4px;">
-                        <?php echo $remote_info ? 'v' . esc_html($remote_info->version) : 'Consultando...'; ?>
-                    </div>
-                    <span style="font-size: 11px; color: #64748b;">
-                        <?php if ($remote_info && !empty($remote_info->last_commit)): ?>
-                            Commit: <code><?php echo esc_html(substr($remote_info->last_commit, 0, 7)); ?></code>
-                        <?php else: ?>
-                            Aguardando verificação
-                        <?php endif; ?>
-                    </span>
-                </div>
-
-                <div style="background: #f8fafc; padding: 16px; border-radius: 10px; border: 1px solid #e2e8f0;">
-                    <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase;">Status do Sistema</div>
-                    <div style="margin-top: 6px;">
-                        <?php if ($remote_info && !empty($remote_info->last_commit) && $remote_info->last_commit !== $installed_commit): ?>
-                            <span style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; background: #fee2e2; color: #b91c1c;">
-                                ⚠️ Atualização Pendente
-                            </span>
-                        <?php else: ?>
-                            <span style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; background: #dcfce7; color: #15803d;">
-                                ✅ Sistema Atualizado
-                            </span>
-                        <?php endif; ?>
-                    </div>
-                    <span style="font-size: 11px; color: #64748b; display: block; margin-top: 4px;">
-                        <?php echo $remote_info && !empty($remote_info->last_updated) ? 'Última compilação: ' . esc_html($remote_info->last_updated) : 'Pronto para checar'; ?>
-                    </span>
-                </div>
-            </div>
-
-            <!-- Botão de Forçar Checagem Imediata -->
-            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 18px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-                <div>
-                    <h4 style="margin: 0 0 4px; font-size: 14px; font-weight: 700; color: #1e3a8a;">Checar Atualizações no Git em Tempo Real</h4>
-                    <p style="margin: 0; font-size: 12px; color: #3b82f6;">
-                        O WordPress armazena o cache de atualizações. Clique abaixo para forçar a verificação imediata com o GitHub.
-                    </p>
-                </div>
-                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
-                    <input type="hidden" name="action" value="pjb_force_git_update_check">
-                    <?php wp_nonce_field('pjb_force_update_nonce'); ?>
-                    <button type="submit" class="button button-primary" style="background: #2563eb; border-color: #1d4ed8; font-weight: 600; padding: 6px 16px; height: auto;">
-                        🔄 Verificar Atualizações no GitHub Agora
-                    </button>
-                </form>
-            </div>
-
-            <?php if ($remote_info && !empty($remote_info->last_commit) && $remote_info->last_commit !== $installed_commit): ?>
-                <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 18px; margin-bottom: 25px;">
-                    <h4 style="margin: 0 0 6px; font-size: 14px; font-weight: 700; color: #92400e;">🎉 Nova Atualização Pronta para Instalar!</h4>
-                    <p style="margin: 0 0 12px; font-size: 13px; color: #78350f;">
-                        Uma nova versão (Commit <code><?php echo esc_html(substr($remote_info->last_commit, 0, 7)); ?></code>) foi identificada no GitHub.
-                        Você pode atualizar com apenas 1 clique diretamente na área de plugins do WordPress sem perder nenhuma configuração ou dado do banco.
-                    </p>
-                    <a href="<?php echo esc_url(admin_url('plugins.php')); ?>" class="button button-primary" style="background: #d97706; border-color: #b45309; font-weight: 700;">
-                        ⚡ Ir para a Lista de Plugins e Atualizar Agora
-                    </a>
-                </div>
-            <?php endif; ?>
-
-            <!-- Formulário de Token para Repositório Privado -->
-            <div style="border-top: 1px solid #e2e8f0; padding-top: 20px;">
-                <h4 style="margin: 0 0 8px; font-size: 14px; font-weight: 700; color: #0f172a;">Configuração de Acesso (Repositório Privado)</h4>
-                <p style="font-size: 12px; color: #64748b; margin-bottom: 15px;">
-                    Se o repositório no GitHub for <strong>privado</strong>, insira um <em>Personal Access Token (PAT)</em> com permissão de leitura de repositório (<code>repo</code>). Se for público, este campo pode ficar em branco.
-                </p>
-
-                <form method="post" action="">
-                    <?php wp_nonce_field('pjb_save_github_action', 'pjb_save_github_nonce'); ?>
-                    <table class="form-table" role="presentation">
-                        <tbody>
-                            <tr>
-                                <th scope="row"><label for="pjb_github_token">GitHub Personal Access Token</label></th>
-                                <td>
-                                    <input name="pjb_github_token" type="password" id="pjb_github_token" value="<?php echo esc_attr($github_token); ?>" class="regular-text" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="width: 100%; max-width: 450px;">
-                                    <p class="description">
-                                        Para gerar um token: Acesse seu GitHub > <strong>Settings</strong> > <strong>Developer Settings</strong> > <strong>Personal access tokens (Tokens classic)</strong> > Marque o escopo <code>repo</code>.
-                                    </p>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-
-                    <div style="margin-top: 15px;">
-                        <input type="submit" name="pjb_action_save_github" class="button button-secondary" value="Salvar Configuração do GitHub">
-                    </div>
-                </form>
             </div>
         </div>
 
